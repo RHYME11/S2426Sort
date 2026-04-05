@@ -2,8 +2,10 @@
 #include<EventProcess.h>
 
 #include<EventBuilder.h>
+#include<Histogramer.h>
 
 #include<globals.h>
+
 
 #include <map>
 
@@ -47,7 +49,8 @@ void EventProcess::loop() {
     //printf("frags: %lu\n",builtfrags.size());      
     //continue;
 
-    std::map<int,std::vector<std::unique_ptr<Fragment> > > cores;
+    //std::map<int,std::vector<std::unique_ptr<Fragment> > > cores;
+    std::vector<std::unique_ptr<Fragment> >                cores;
     std::map<int,std::vector<std::unique_ptr<Fragment> > > segments;
     std::map<int,std::vector<std::unique_ptr<Fragment> > > suppressors;
     std::vector<std::unique_ptr<Fragment> >                tip;
@@ -56,10 +59,10 @@ void EventProcess::loop() {
     for(size_t i=0;i<builtfrags.size();i++){
       currenttime = builtfrags.at(i).get()->Timestamp();
       if(currenttime < lasttime) { 
-        printf(RED);
-        printf("%s %ld %lu\n",builtfrags.at(i).get()->Name().c_str(), builtfrags.at(i).get()->Timestamp(), builtfrags.at(i).get()->Timestamp());
-        printf(RESET_COLOR);
-        printf("\n");
+        //printf(RED);
+        //printf("%s %ld %lu\n",builtfrags.at(i).get()->Name().c_str(), builtfrags.at(i).get()->Timestamp(), builtfrags.at(i).get()->Timestamp());
+        //printf(RESET_COLOR);
+        //printf("\n");
       }
       lasttime = currenttime;
     
@@ -67,15 +70,51 @@ void EventProcess::loop() {
       //but this will do for now.
       //do physics...
       switch(builtfrags.at(i).get()->DetType()) {
-        case 1: //
+        case 0: // tigress core
+          cores.push_back(std::move(builtfrags.at(i)));
+          break;
+        case 1: // likely tigress core (nid)
+          break;
+        case 2: //tigress segment
+          break;
+        case 3: //tigress suppressor
+          break;
+        case 8: //emma
+          break;
+        case 11: //tip
+        case 12: //tip
           break;
         default:
           break;
       }
     }
 
+    std::sort(cores.begin(), cores.end(),
+      [](const std::unique_ptr<Fragment>& a,
+        const std::unique_ptr<Fragment>& b) {
+        return a->Energy() > b->Energy();  // decending order.
+    });
+
+    for(auto it = cores.begin(); it != cores.end(); ++it) {
+      auto& current = *it;
+      int  det   = std::stoi(current->Name().substr(3,2));
+      char color = current->Name().at(5);
+      int  xtal  = (color == 'R') ? 0 :
+                   (color == 'G') ? 1 :
+                   (color == 'B') ? 2 :
+                   (color == 'W') ? 3 : -1;
+      Histogramer::Fill("summary",70,0,70,det*4 +xtal,8000,0,4000,current->Energy());
+
+      auto next = std::next(it);
+      if(next == cores.end())
+        break;  // no next element
+      auto& nextCore = *next;
+
+      Histogramer::Fill("dtime",4000,-2000,2000,current->Time() - nextCore->Time(),4000,0,4000,nextCore->Energy());
+      Histogramer::Fill("dtimestamp",4000,-2000,2000,current->Timestamp() - nextCore->Timestamp(),4000,0,4000,nextCore->Energy());
 
 
+    }
 
 //   // else process the frags.
 //   

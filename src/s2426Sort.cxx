@@ -334,7 +334,7 @@ void MakeTigressFragments(uint32_t *pdata,int size) {
         good++;
         //for(number oif pileupes)
         //  Histogramer::Fill("something",70,0,70,frag.get()->GetNumber(i),8000,0,64000,frag.get()->GetCharge(i)
-        frag.get()->Print();
+//        frag.get()->Print();
         EventBuilder::Get()->push(std::move(frag));
       } else {
         bad++;
