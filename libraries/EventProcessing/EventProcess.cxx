@@ -99,20 +99,20 @@ void EventProcess::loop() {
       auto& current = *it;
       int  det   = std::stoi(current->Name().substr(3,2));
       char color = current->Name().at(5);
-      int  xtal  = (color == 'R') ? 0 :
+      int  xtal  = (color == 'B') ? 0 :
                    (color == 'G') ? 1 :
-                   (color == 'B') ? 2 :
+                   (color == 'R') ? 2 :
                    (color == 'W') ? 3 : -1;
-      Histogramer::Fill("summary",70,0,70,det*4 +xtal,8000,0,4000,current->Energy());
-      Histogramer::Fill(Form("x%02i%c",det,color),"gain",3600,0,3600,current->Time()/1e8,4000,0,4000,current->Energy());
+      Histogramer::Fill("Event","summary",70,0,70,det*4 +xtal,8000,0,4000,current->Energy());
+      Histogramer::Fill(Form("Event/x%02i%c",det,color),"gain",3600,0,3600,current->Time()/1e8,4000,0,4000,current->Energy());
 
       auto next = std::next(it);
       if(next == cores.end())
         break;  // no next element
       auto& nextCore = *next;
 
-      Histogramer::Fill("dtime",4000,-2000,2000,current->Time() - nextCore->Time(),4000,0,4000,nextCore->Energy());
-      Histogramer::Fill("dtimestamp",4000,-2000,2000,current->Timestamp() - nextCore->Timestamp(),4000,0,4000,nextCore->Energy());
+      Histogramer::Fill("Event","dtime",4000,-2000,2000,current->Time() - nextCore->Time(),4000,0,4000,nextCore->Energy());
+      Histogramer::Fill("Event","dtimestamp",4000,-2000,2000,current->Timestamp() - nextCore->Timestamp(),4000,0,4000,nextCore->Energy());
 
     }
 

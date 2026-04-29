@@ -94,31 +94,12 @@ int main(int argc, char **argv) {
 
   }
   doStatus(infile,true);
-  //printf("Event info: %zu types\n",typeFound.size());
-  //for(auto it : typeFound) { 
-  //  printf("\t0x%08x: \t%i\n",it.first,it.second);
-  //}
-  //printf("Bank info:\n");
-  //for(auto it : banksFound) { 
-  //  printf("\t%s: \t%i\n",it.first.c_str(),it.second);
-  //}
-
-  //std::ofstream ofile("banks.txt");
-  //for(auto it : banksFound) { 
-  //  ofile << "Bank info:" << std::endl;
-  //  ofile << "bank:  " << it.first.c_str() << std::endl;
-  //  ofile << "count: " << it.second        << std::endl;
-  //}
-  //ofile.close();
   gHist->Close();
   return 0;  
 }
 
 
-
-
-
-
+// ======================================================================================= // 
 void doStatus(TMidasFile &infile,bool forcePrint) {
   
   if((std::chrono::steady_clock::now()-lastPrint) > interval) forcePrint=true;
@@ -151,6 +132,7 @@ void doStatus(TMidasFile &infile,bool forcePrint) {
 }
 
 
+// ======================================================================================= // 
 void MakeEmmaADC(uint32_t* pdata,int size) {
   //printf("MADC, size = %i:\n",size);
   long timestamp=0;
@@ -209,6 +191,7 @@ static uint32_t wraparoundcounter = 0; //0xffffffff; // Needed for bad data at s
 static uint32_t lasttimestamp = 0;     // "last" time stamp for simple wraparound algorightm 
 static uint32_t countsbetweenwraps; // number of counts between wraparounds
 
+// ======================================================================================= // 
 void MakeEmmaTDC(uint32_t* pdata ,int size) {
   //printf("MTDC, size = %i:\n",size);
   //long timestamp=0;
@@ -308,6 +291,7 @@ void MakeEmmaTDC(uint32_t* pdata ,int size) {
   }
 }
 
+// ======================================================================================= // 
 void MakeTigressFragments(uint32_t *pdata,int size) { 
   int words=0;
   int counter=0;
@@ -324,25 +308,25 @@ void MakeTigressFragments(uint32_t *pdata,int size) {
     if(pStart!=0 && pEnd!=0) {
       counter++;
       int nwords = int(pEnd-pStart);
-      //processGRF4(pStart,nwords);
       std::unique_ptr<Fragment> frag = std::make_unique<Fragment>();
-      //printf("%p \t %i\n",pStart,nwords);
       int i=0;
-      //while(i<nwords) {
-      //  printf("0x%08x\t",*(pStart+i));
-      //  i++;
-      //  if(i!=0)
-      //    if((i%8)==0)
-      //      printf("\n");
-      //}
-      //printf("\n");
       if(frag.get()->Unpack(pStart,nwords)) {
+//=========================================================================================================//        
+        //if(frag.get()->DetType() == 0) {
+        //  std::string name = frag.get()->Name();
+        //  int  det   = std::stoi(frag->Name().substr(3,2));
+        //  char color = frag->Name().at(5);  
+        //  int  xtal  = (color == 'B') ? 0 : 
+        //               (color == 'G') ? 1 : 
+        //               (color == 'R') ? 2 : 
+        //               (color == 'W') ? 3 : -1;
+        //  Histogramer::Fill("Frags","summary",70,0,70,det*4 +xtal,8000,0,4000,frag->Energy());
+        //  Histogramer::Fill(Form("Frags/x%02i%c",det,color),"gain",3600,0,3600,frag->Time()/1e8,4000,0,4000,frag->Energy());
+        //}
         good++;
-        //for(number oif pileupes)
-        //  Histogramer::Fill("something",70,0,70,frag.get()->GetNumber(i),8000,0,64000,frag.get()->GetCharge(i)
-//        frag.get()->Print();
         EventBuilder::Get()->push(std::move(frag));
-      } else {
+//=========================================================================================================//
+      }else{
         bad++;
       }
       pStart = 0;
