@@ -149,7 +149,7 @@ void MakeEmmaADC(uint32_t* pdata,int size) {
         timestamp=datum&0x3fffffff;
         break;   
       case 0x40000000:
-        break;   
+        break;  // header event 0x4~0x7 
       case 0x00000000:
         if(datum & 0x00800000) {//
           timestamp += ((long(datum&0x0000ffff))<<30);
@@ -165,7 +165,7 @@ void MakeEmmaADC(uint32_t* pdata,int size) {
           frag.get()->SetCfd(0);             
           frag.get()->SetFilterPattern(0);   
           frag.get()->SetPileup(0);          
-          frag.get()->SetDetType(12);
+          frag.get()->SetDetType(13);
 
           //printf("EMMA ADC\n");
           int c     = frag.get()->Address()&0xff;
@@ -221,15 +221,11 @@ void MakeEmmaTDC(uint32_t* pdata ,int size) {
       case 0x8:  //event header
         break;
       case 0x1:  //tdc header
-        tmpAddress = (datum>>16)&0x300; 
+        tmpAddress = (datum>>12)&0xfff; // event ID 
         break;
       case 0x0:  //tdc measurement
-         { 
-           int c = ((datum >> 19) & 0xff ); 
-           //printf("tdc: 0x%08x\t%i\n",c,c);
-         }  
-        addresses.push_back(0x900000 + ((datum >> 19) & 0xff ) );  
-        charges.push_back(datum & 0x7ffff);
+        addresses.push_back((datum >> 21) & 0x1f); // CHANNEL 
+        charges.push_back(datum & 0x1fffff); // TDC MEASUREMENT
         break;
       case 0x3:  //tdc trailer
         break;
@@ -238,7 +234,7 @@ void MakeEmmaTDC(uint32_t* pdata ,int size) {
       case 0x11: //extended trigger time
         tmpTimestamp = (datum & 0x7FFFFFFU) << 5;
         break;
-      case 0x10: //trailer
+      case 0x10: //trigger time trailer
         tmpTimestamp |= ((datum) & 0x1fU);
         if(tmpTimestamp < lasttimestamp) {
           wraparoundcounter++;
@@ -247,7 +243,7 @@ void MakeEmmaTDC(uint32_t* pdata ,int size) {
         lasttimestamp = tmpTimestamp;
         ts = static_cast<Long64_t>(lasttimestamp) +
           static_cast<Long64_t>(0x100000000ULL) * static_cast<Long64_t>(wraparoundcounter);
-        ts = (ts * 5) >> 1;
+        ts = (ts * 5) >> 1; // before ts in 25ns, after ts in 10 ns;
 
         for (size_t i = 0; i < addresses.size(); ++i) {
           // optional duplicate check, mirroring GH:
@@ -268,7 +264,7 @@ void MakeEmmaTDC(uint32_t* pdata ,int size) {
           frag.get()->SetCfd(0);             
           frag.get()->SetFilterPattern(0);
           frag.get()->SetPileup(0);
-          frag.get()->SetDetType(13);
+          frag.get()->SetDetType(14);
 
 
            int c     = frag.get()->Address()&0xff;
