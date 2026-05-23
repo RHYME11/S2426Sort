@@ -28,19 +28,20 @@ EventProcess::~EventProcess() {
     fWorker.join();
 }
 
-
+// ======================= //
+double last_EMT = -1;
+// ======================= //
 void EventProcess::loop() {
   long lasttime    = -1;
   long currenttime =  0;
   while(1) {
-    //printf("\n\n=======================================================\n");
     if(fStop) break;
     
     //printf("\n\n\n\n EVENT PROCESS LOOP  ?!\n\n\n");
 
     //printf("here 1\n");
     std::vector<std::unique_ptr<Fragment> > builtfrags;
-    if(!EventBuilder::Get()->Running()) return;
+    if(!EventBuilder::Get()->Running() && EventBuilder::Get()->Size() == 0) return;
     if(!EventBuilder::Get()->pop(builtfrags)) {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));  
       continue;
@@ -54,20 +55,18 @@ void EventProcess::loop() {
     std::vector<std::unique_ptr<Fragment> >                cores;
     std::map<int,std::vector<std::unique_ptr<Fragment> > > segments;
     std::map<int,std::vector<std::unique_ptr<Fragment> > > suppressors;
+    std::vector<std::unique_ptr<Fragment> >                emmat;
     std::vector<std::unique_ptr<Fragment> >                tip;
     std::vector<std::unique_ptr<Fragment> >                emmaadc;
     std::vector<std::unique_ptr<Fragment> >                emmatdc;
+    
 
     for(size_t i=0;i<builtfrags.size();i++){
-      currenttime = builtfrags.at(i).get()->Timestamp();
-      if(currenttime < lasttime) { 
-        //printf(RED);
-        //printf("%s %ld %lu\n",builtfrags.at(i).get()->Name().c_str(), builtfrags.at(i).get()->Timestamp(), builtfrags.at(i).get()->Timestamp());
-        //printf(RESET_COLOR);
-        //printf("\n");
-      }
-      lasttime = currenttime;
-    
+      //if(i==0) printf("\n\n=======================================================\n");
+      //printf("%s(0x%08x): %lu\n",builtfrags.at(i).get()->Name().c_str(), 
+      //                           builtfrags.at(i).get()->Address(),
+      //                           builtfrags.at(i).get()->TimestampNs());   
+ 
       //ideal i would move the below code to a "physics-loop" 
       //but this will do for now.
       //do physics...
@@ -82,6 +81,8 @@ void EventProcess::loop() {
         case 3: //tigress suppressor
           break;
         case 8: // EMMA master trigger
+          emmat.push_back(std::move(builtfrags.at(i)));
+          break;
         case 12: //tip (based on ODB)
           break;
         case 13: // EMMA ADC
@@ -94,7 +95,27 @@ void EventProcess::loop() {
           break;
       }
     }
+// =================== EMMA master Trigger ===========================//
+    //if(emmat.size()>1) printf("EMMA master trigger has more than one in the event!!!!!!!!!!!!!!!!!!\n\n\n");
+    for(auto it = emmat.begin(); it!=emmat.end(); ++it){
+      auto& current = *it;
+      if(last_EMT>0){
+        Histogramer::Get()->Fill("EMT_dt",1e6,0,1e6,current->TimestampNs()-last_EMT);
+        Histogramer::Get()->Fill("EMT_dt_ts",1e3,0,1e3,(current->TimestampNs()-last_EMT)/1e3,
+                                              4000,0,4000, current->TimestampNs()/1e9);
+      }
+      last_EMT = current->TimestampNs();
+    }
 
+    if(emmaadc.size()>0 && emmatdc.size()==0) 
+      Histogramer::Get()->Fill("Event/Size","single_adc",100,0,100,emmaadc.size());
+    if(emmaadc.size()==0 && emmatdc.size()>0) 
+      Histogramer::Get()->Fill("Event/Size","single_tdc",100,0,100,emmatdc.size());
+    if(emmaadc.size()==0 && cores.size()>0) 
+      Histogramer::Get()->Fill("Event/Size","single_cores_noemma",100,0,100,cores.size()); 
+    if(emmaadc.size()>0 && cores.size()==0) 
+      Histogramer::Get()->Fill("Event/Size","single_emma_notig",100,0,100,emmaadc.size()); 
+ 
 // =================== EMMA ADC ===========================//
     std::map<int,std::vector<double>> ics;
     std::vector<double> si;
@@ -103,14 +124,13 @@ void EventProcess::loop() {
       int c     = current->Address()&0xff;
       float chg = current->Charge();
       long timestamp = current->Timestamp(); 
-      Histogramer::Get()->Fill("Event/EMMA","eADC",4000,0,64000,chg, 1000,0,1000,c);
+      long tsns      = current->TimestampNs();
+      Histogramer::Get()->Fill("Event/EMMA","eADC_event",4000,0,64000,chg, 1000,0,1000,c);
       if(c>15 && c<20) {
         ics[c-16].push_back(chg);
-        //printf("ic%i: %lu\n", c-16,timestamp);
       }
       if(c == 3) {
         si.push_back(chg);
-        //printf("si: %lu\n",timestamp);
       }
     }
     double sum = 0;
@@ -124,15 +144,16 @@ void EventProcess::loop() {
 		double sic = 0;
 		for(double v : si) {sum += v; sic += v;}
 		for(int i = 0; i < 4; ++i) {
-		  Histogramer::Get()->Fill("Event/EMMA", Form("ic%d_vs_sum",i), 4000, 0, 4000, sum,4000, 0, 4000, ic_sum[i]);
+      Histogramer::Get()->Fill("Event/EMMA", Form("ic%d_vs_sum",i), 4000, 0, 4000, sum,4000, 0, 4000, ic_sum[i]);
 		  Histogramer::Get()->Fill("Event/EMMA", Form("ic%d_vs_si",i),  4000, 0, 4000, sic,4000, 0, 4000, ic_sum[i]);
+	    Histogramer::Get()->Fill("Event/Size",Form("ic%i_size",i),10,0,10,ics[i].size());	
 		  for(int j = i + 1; j < 4; ++j) {
 		   	if(ic_sum.count(i) && ic_sum.count(j)) {
 		   		Histogramer::Get()->Fill("Event/EMMA",Form("ic%d_vs_ic%d", i, j),4000, 0, 4000, ic_sum[i],4000, 0, 4000, ic_sum[j]);
 		   	}
 		  }
-			
 		} 
+	  Histogramer::Get()->Fill("Event/Size","si_size",10,0,10,si.size());	
 
 // ============================================================//
 
@@ -152,13 +173,12 @@ void EventProcess::loop() {
       int c     = current->Address()&0xff;
       float chg = current->Charge(); 
       long timestamp = current->Timestamp(); 
-      Histogramer::Get()->Fill("Event/EMMA","eTDC",4000,0,64000,chg, 1000,0,1000,c);
+      long tsns      = current->TimestampNs(); 
+      Histogramer::Get()->Fill("Event/EMMA","eTDC_event",4000,0,64000,chg, 1000,0,1000,c);
 			if(c==3) right  = chg;
 			if(c==4) left   = chg;
 			if(c==5) top    = chg;
 			if(c==6) bottom = chg;
-      //if(c>=0 && c<=2) printf("pgac  anode%i: %lu\n",c,timestamp);
-      //if(c>=3 && c<=6) printf("pgac cathod%i: %lu\n",c,timestamp);
     }
 		if(left>0 && right>0 && top>0 && bottom>0){
 			double Xdiff = (left+fLdelay) - (right+fRdelay);
@@ -178,10 +198,12 @@ void EventProcess::loop() {
         const std::unique_ptr<Fragment>& b) {
         return a->Energy() > b->Energy();  // decending order.
     });
+	  Histogramer::Get()->Fill("Event/Size","core_size",20,0,20,cores.size());	
 
     for(auto it = cores.begin(); it != cores.end(); ++it) {
       auto& current = *it;
       //std::cout << "frag name = [" << current->Name() << "] [" << current->DetType() << "]" << std::endl;
+      if(current->Energy()<20 || current->Energy()>4000) continue;
       int  det   = std::stoi(current->Name().substr(3,2));
       char color = current->Name().at(5);
       int  xtal  = (color == 'B') ? 0 :
@@ -189,8 +211,12 @@ void EventProcess::loop() {
                    (color == 'R') ? 2 :
                    (color == 'W') ? 3 : -1;
       Histogramer::Fill("Event","summary_energy",70,0,70,det*4 +xtal,8000,0,4000,current->Energy());
-      Histogramer::Fill("Event","summary_charge",70,0,70,det*4 +xtal,16000,0,16000,current->Charge());
-      Histogramer::Fill(Form("Event/x%02i%c",det,color),"time_charge",7200,0,72000,current->Time()/1e8,16000,0,16000,current->Charge());
+      if(emmaadc.size()==0)
+        Histogramer::Fill("Event","summary_energy_noemma",70,0,70,det*4 +xtal,8000,0,4000,current->Energy());
+      //Histogramer::Fill("Event","summary_charge",70,0,70,det*4 +xtal,16000,0,16000,current->Charge());
+      //Histogramer::Fill(Form("Event/x%02i%c",det,color),"time_charge",7200,0,72000,current->Time()/1e8,16000,0,16000,current->Charge());
+      long timestamp = current->Timestamp();
+      long tsns      = current->TimestampNs();
       auto next = std::next(it);
       if(next == cores.end())
         break;  // no next element
@@ -198,7 +224,6 @@ void EventProcess::loop() {
       if(nextCore->Name().size()<10) continue;
       Histogramer::Fill("Event","dtime",4000,-2000,2000,current->Time() - nextCore->Time(),4000,0,4000,nextCore->Energy());
       Histogramer::Fill("Event","dtimestamp",4000,-2000,2000,current->Timestamp() - nextCore->Timestamp(),4000,0,4000,nextCore->Energy());
-
     }
 // ============================================================//
 

@@ -99,7 +99,8 @@ bool Fragment::Unpack(uint32_t *data,int &nwords) {
   tempInt += ((datum & 0x7fc00000) >> 22);
   AddInt(tempInt);
   AddCharge(tempChg);
-
+  
+  SetTimestampUnit(10);
   //Print();
   return true;
   //return bytes_processed;
@@ -111,9 +112,12 @@ void Fragment::Print(Option_t *opt) const {
   if(c)
   printf("\tname:        %s\n",c->Name().c_str());
   printf("\taddress:     0x%08x\n",fAddress);
+  printf("\tchannel:     %i(%i)\n",   c->Number(),int(fAddress&0xff));
+  //printf("\tchannel:     %i(%i)\n",   c->Number(),int((fAddress>>2)&0x1f));
   printf("\tdetType:     %i\n",fDetType);
   printf("\ttimestamp:   %lu\n",fTimestamp);//0x%08x\n",fCfd);
-  printf("\tcfd:         0x%08x\n",fCfd);
+  printf("\ttimestampNS: %lu\n",fTimestamp*fTimestampUnit);//0x%08x\n",fCfd);
+  //printf("\tcfd:         0x%08x\n",fCfd);
   printf("\tcfd:         %d\n",fCfd);//0x%08x\n",fCfd);
   printf("\ttime:        %.01f\n",Time());//0x%08x\n",fCfd);
   for(size_t i=0;i<fInt.size();i++) {

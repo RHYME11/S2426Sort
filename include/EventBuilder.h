@@ -17,7 +17,7 @@ struct CompareFragmentPtrs {
 
       //a.get()->Print();
       //b.get()->Print();
-      return a.get()->Timestamp() > b.get()->Timestamp();
+      return a.get()->TimestampNs() > b.get()->TimestampNs();
     }
 };
 

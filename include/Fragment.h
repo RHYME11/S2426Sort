@@ -6,6 +6,7 @@
 //#include <TObject.h>
 
 #include <Channel.h>
+#include "TRandom.h"
 
 class Fragment { 
   public:
@@ -28,6 +29,7 @@ class Fragment {
     void SetCfd(int cfd)              { fCfd = cfd; }
     void SetFilterPattern(int fp)     { fFilterPattern = fp; }    
     void SetPileup(int pileup)        { fPileup = pileup; }  
+    void SetTimestampUnit(int timestampunit) {fTimestampUnit = timestampunit;}
 
     void AddCharge(int chg); //           { fCharge.push_back(chg); }
     void AddInt(int i)                { fInt.push_back(i); }
@@ -37,7 +39,8 @@ class Fragment {
     int  DetType()   const { return fDetType; }
 
     long Timestamp() const { return fTimestamp; }
-    double Time()    const { return double(fTimestamp&0xfffffffffffc0000) + double(fCfd)/16.; } 
+    //double Time()    const { return double(fTimestamp&0xfffffffffffc0000) + double(fCfd)/16.; } 
+    double Time()    const { return double(fTimestamp&0xfffffffffffc0000)*fTimestampUnit + double(fCfd+gRandom->Uniform())/1.6; } 
     int  Cfd()       const { return fCfd;       }
     int  Filter()    const { return fFilterPattern; }
     int  Pileup()    const { return fPileup;        }
@@ -49,6 +52,8 @@ class Fragment {
     int  DetNumber()    const { std::string name = Channel::Get(fAddress)->Name(); if(name.length()>4) return atoi(name.substr(3,2).c_str()); return 99; }
 
     std::string Name() const { return   Channel::Get(fAddress)->Name(); }  
+
+    long TimestampNs()  const {return fTimestamp * fTimestampUnit;}
 
     bool operator<(const Fragment& other) const { 
       //if(timestamp != other.timestamp) 
@@ -69,6 +74,8 @@ class Fragment {
 
     bool fHasWave{false};
     int  fWaveSamples{-1};
+
+    int fTimestampUnit{-1};    
 
     std::vector<int> fInt;
     std::vector<float> fCharge;

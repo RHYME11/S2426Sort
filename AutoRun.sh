@@ -1,52 +1,36 @@
 #!/usr/bin/env bash
 
-# Exit immediately on error (-e)
-# Treat unset variables as errors (-u)
-# Catch errors in pipelines (pipefail)
 set -euo pipefail
 
 # -------------------------------
 # Configuration
 # -------------------------------
 
-# List of run numbers to process
-#RUNS=(62089 62090 62092 62094 62095 62096 62097 62099 62102 62105 62274 62275 62276 62277)
-RUNS=(62094 62095 62097 62099)
+RUNS=(62183)
 
-# Directory containing input .mid files
 DATA_DIR="/data1/yzhu/Projects/S2426/raw_data"
-
-# Path to sorting executable
 SORTER="./bin/s2426Sort"
-
-# Output directory for ROOT files
 OUT_DIR="./histOutput"
 
-# Maximum number of runs processed in parallel
 MAX_PARALLEL=1
-
-# Log file to record failed subruns
 RUN_LOG="${OUT_DIR}/run.log"
 
-# Create output directory if it does not exist
 mkdir -p "${OUT_DIR}"
-
-# Initialize (empty) log file
 : > "${RUN_LOG}"
 
 # -------------------------------
 # Function: process one run
 # -------------------------------
 process_run() {
-  local run="$1"       # Current run number
-  local files=()       # Array to store subrun files
+  local run="$1"
+  local files=()
+  local rootfiles=()
+  local tmp_log=""
 
-  # Enable nullglob so that no-match patterns expand to empty array
   shopt -s nullglob
   files=(${DATA_DIR}/run${run}_*.mid)
   shopt -u nullglob
 
-  # If no files found, skip this run
   if [ ${#files[@]} -eq 0 ]; then
     echo "[WARN] No subrun files for run ${run}"
     return 0
@@ -54,34 +38,60 @@ process_run() {
 
   echo "[INFO] Run ${run} start (${#files[@]} subruns)"
 
-  # Loop over each subrun (serial execution within one run)
   for midfile in "${files[@]}"; do
     echo "[INFO]   Processing $(basename "${midfile}")"
 
-    # Run sorter and check if it succeeds
-    if "${SORTER}" "${midfile}"; then
+    tmp_log="${OUT_DIR}/tmp_$(basename "${midfile}" .mid).log"
+
+    set +e
+    "${SORTER}" "${midfile}" > "${tmp_log}" 2>&1
+    status=$?
+    set -e
+
+    if [ ${status} -eq 0 ]; then
       echo "[INFO]   Finished $(basename "${midfile}")"
+      rm -f "${tmp_log}"
     else
-      # If sorter crashes (e.g., segfault), log the file name
-      echo "${midfile}" >> "${RUN_LOG}"
       echo "[ERROR]   Failed on $(basename "${midfile}")"
 
-      # Stop processing this run (no merge)
-      return 1
+      {
+        echo "============================================================"
+        echo "FILE: ${midfile}"
+        echo "EXIT_STATUS: ${status}"
+        echo "ERROR_MESSAGE:"
+        tail -n 30 "${tmp_log}"
+        echo ""
+      } >> "${RUN_LOG}"
+
+      rm -f "${tmp_log}"
+
+      # Continue to next subrun instead of stopping this run
+      continue
     fi
   done
 
   echo "[INFO] Run ${run} merging..."
 
-  # Merge all subrun ROOT files into a single file
-  # Note: wildcard is intentionally unquoted for expansion
-  hadd -f "${OUT_DIR}/hist${run}.root" \
-       ${OUT_DIR}/hist${run}_*.root
+  # Merge all ROOT files that were actually generated
+  shopt -s nullglob
+  rootfiles=(${OUT_DIR}/hist${run}_*.root)
+  shopt -u nullglob
 
-  echo "[INFO] Run ${run} done"
+  if [ ${#rootfiles[@]} -gt 0 ]; then
+    hadd -f "${OUT_DIR}/hist${run}.root" "${rootfiles[@]}"
+    echo "[INFO] Run ${run} done"
+  else
+    echo "[WARN] No ROOT files generated for run ${run}, skip hadd"
+
+    {
+      echo "============================================================"
+      echo "RUN: ${run}"
+      echo "WARNING: No ROOT files generated, skip hadd"
+      echo ""
+    } >> "${RUN_LOG}"
+  fi
 }
 
-# Export function and variables for use in subprocesses (required by xargs)
 export -f process_run
 export DATA_DIR SORTER OUT_DIR RUN_LOG
 
@@ -89,8 +99,6 @@ export DATA_DIR SORTER OUT_DIR RUN_LOG
 # Parallel execution
 # -------------------------------
 
-# Run up to MAX_PARALLEL runs in parallel
-# Each run is processed independently (subruns remain serial)
 printf "%s\n" "${RUNS[@]}" | \
 xargs -I{} -P "${MAX_PARALLEL}" bash -c 'process_run "$@"' _ {}
 
@@ -98,8 +106,9 @@ xargs -I{} -P "${MAX_PARALLEL}" bash -c 'process_run "$@"' _ {}
 # Cleanup: remove empty log file
 # -------------------------------
 
-# If log file exists but is empty, delete it
 if [ ! -s "${RUN_LOG}" ]; then
   rm -f "${RUN_LOG}"
   echo "[INFO] run_log is empty, removed"
+else
+  echo "[INFO] Failures/warnings saved in ${RUN_LOG}"
 fi

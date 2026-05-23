@@ -22,16 +22,20 @@ void MakeEmmaADC(uint32_t*,int);
 void MakeEmmaTDC(uint32_t*,int);
 
 
-void doStatus(TMidasFile&,bool forcePrint=false);
+//void doStatus(TMidasFile&,bool forcePrint=false);
+void doStatus(TMidasFile&,bool forcePrint=false,bool drainingQueue=false);
 auto start     = std::chrono::steady_clock::now();
 auto lastPrint = std::chrono::steady_clock::now();
 auto timeEllapsed = std::chrono::duration_cast<std::chrono::seconds>(lastPrint-start);
 const std::chrono::seconds interval(1); // 1 second interval
 
+static Long64_t xferhfts;     // Time stamp to be transferred from ADC to TDC; 10 ns ticks
+int gl_counter, gl_counter1, gl_counter2, gl_counter3;
+
 int main(int argc, char **argv) {
   
 
-TMidasFile infile(argv[1]);
+  TMidasFile infile(argv[1]);
   TMidasEvent event;
 
   Histogramer *gHist = Histogramer::Get();
@@ -40,11 +44,11 @@ TMidasFile infile(argv[1]);
   getRunNumber(argv[1],run,subrun);
   gHist->SetRun(run,subrun);
 
-  printf(" sorting \t %s\n",argv[1]);
-  printf(" \trun:    %i\n",run);
-  printf(" \tsubrun: %i\n",subrun);
+  ////printf(" sorting \t %s\n",argv[1]);
+  ////printf(" \trun:    %i\n",run);
+  ////printf(" \tsubrun: %i\n",subrun);
 
-  Channel::Read("cal/CalibrationFile_May1326.cal"); 
+  Channel::Read("cal/CalibrationFile_May1526_pol1.cal"); 
 
   //start event builder;
   EventBuilder::Get();
@@ -61,6 +65,8 @@ TMidasFile infile(argv[1]);
     //event.Print();
     switch(event.GetEventId()) {
       case 1:  //trigger
+        xferhfts = 0;
+        //printf("\n\n--------------------%i--------------------- \n",counter);
         Histogramer::Fill("EventTrigger",10,0,10,event.GetTriggerMask());
         event.SetBankList();
         //if(event.GetTriggerMask()==0) event.Print("all");
@@ -79,6 +85,9 @@ TMidasFile infile(argv[1]);
           }
           //event.Print("all");
           //printf("\n------------------------------------------ \n\n");
+        } else if((banksize = event.LocateBank(nullptr, "EMMT", &ptr)) > 0) {
+           MakeEmmaTDC((uint32_t*)ptr,banksize); 
+          printf("EMMA TDC found out of MADC\n");          
         }
       case 2:  //scalar
       case 5:  //epics
@@ -92,16 +101,24 @@ TMidasFile infile(argv[1]);
     typeFound[event.GetEventId()]++;
     counter++;
     doStatus(infile);
-
+    //if(counter>100) break;
   }
-  doStatus(infile,true);
+  //printf("\n\n\n total count = %i\n\n\n",counter);
+  EventBuilder::Get()->Stop();
+  while(EventBuilder::Get()->Size() > 0) {
+    doStatus(infile,true,true);
+    //printf("counter = %i fQueue.size() = %i\n",counter, EventBuilder::Get()->Size());
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  }
+  
+  doStatus(infile,true,false);
   gHist->Close();
   return 0;  
 }
 
 
 // ======================================================================================= // 
-void doStatus(TMidasFile &infile,bool forcePrint) {
+/*void doStatus(TMidasFile &infile,bool forcePrint) {
   
   if((std::chrono::steady_clock::now()-lastPrint) > interval) forcePrint=true;
   if(!forcePrint) return; 
@@ -130,12 +147,66 @@ void doStatus(TMidasFile &infile,bool forcePrint) {
   }
   fflush(stdout);
   //if(timeEllapsed.count()>20) break;
-}
+}*/
 
+void doStatus(TMidasFile &infile, bool forcePrint, bool drainingQueue) {
+
+  if((std::chrono::steady_clock::now()-lastPrint) > interval) forcePrint=true;
+  if(!forcePrint) return;
+
+  lastPrint = std::chrono::steady_clock::now();
+  timeEllapsed = std::chrono::duration_cast<std::chrono::seconds>(lastPrint-start);
+
+  printf(CLEAR_LINE);
+
+  if(drainingQueue) {
+    printf(" %lld \t finished reading %.02f / %.02f MB, waiting for EventBuilder queue to drain...\r",
+            timeEllapsed.count(),
+            infile.GetBytesRead()/1024./1024.,
+            infile.GetFileSize()/1024./1024.);
+  } else {
+    printf(" %lld \t read %.02f / %.02f MB\r",
+            timeEllapsed.count(),
+            infile.GetBytesRead()/1024./1024.,
+            infile.GetFileSize()/1024./1024.);
+  }
+
+  printf(CURSOR_DOWN);
+  printf(CLEAR_LINE);
+  printf("\t EventBuilder[%s] Q[%i] pushed[%i] pop[%i]\r",
+          EventBuilder::Get()->Running() ? "on" : "off",
+          EventBuilder::Get()->Size(),
+          EventBuilder::Get()->Pushed(),
+          EventBuilder::Get()->Popped());
+
+  printf(CURSOR_DOWN);
+  printf(CLEAR_LINE);
+  printf("\t EventProcess[%s] pushed[%i]\r",
+          EventProcess::Get()->Running() ? "on" : "off",
+          EventProcess::Get()->Pushed());
+
+  if(drainingQueue) {
+    printf(CURSOR_DOWN);
+    printf(CLEAR_LINE);
+    printf("\t draining EventBuilder queue... remaining Q[%i]\r",
+            EventBuilder::Get()->Size());
+  }
+
+  if(infile.GetBytesRead() >= infile.GetFileSize() && !drainingQueue) {
+    printf("\ndone reading file!\n");
+  } else if(drainingQueue && EventBuilder::Get()->Size() == 0) {
+    printf("\nEventBuilder queue drained!\n");
+  } else {
+    printf(CURSOR_UP);
+    printf(CURSOR_UP);
+    if(drainingQueue) printf(CURSOR_UP);
+  }
+
+  fflush(stdout);
+}
 
 // ======================================================================================= // 
 void MakeEmmaADC(uint32_t* pdata,int size) {
-  //printf("MADC, size = %i:\n",size);
   long timestamp=0;
   int  channel=0;
   int  charge;
@@ -167,14 +238,13 @@ void MakeEmmaADC(uint32_t* pdata,int size) {
           frag.get()->SetFilterPattern(0);   
           frag.get()->SetPileup(0);          
           frag.get()->SetDetType(13);
-
-          //printf("EMMA ADC\n");
+          frag.get()->SetTimestampUnit(50);
+          xferhfts = frag.get()->Timestamp();
           int c     = frag.get()->Address()&0xff;
           float chg = frag.get()->Charge(); 
-          //frag.get()->Print();
           Histogramer::Get()->Fill("eADC",4000,0,64000,chg,
                                            1000,0,1000,c);
-
+          //printf("%s(%i): %lu\n",frag.get()->Name().c_str(),frag.get()->DetType(),frag.get()->TimestampNs());
           EventBuilder::Get()->push(std::move(frag));
         }
         break;   
@@ -184,7 +254,6 @@ void MakeEmmaADC(uint32_t* pdata,int size) {
     //printf("0x%08x ",*(pdata+i));
     //if(i && (i%8)==0) printf("\n");
   }
-  //printf("\n");
 }
 
 // kludge stolen form  GH                0xffffffff 
@@ -194,11 +263,6 @@ static uint32_t countsbetweenwraps; // number of counts between wraparounds
 
 // ======================================================================================= // 
 void MakeEmmaTDC(uint32_t* pdata ,int size) {
-  //printf("MTDC, size = %i:\n",size);
-  //long timestamp=0;
-  //std::vector<uint32_t> addresses;
-  //std::vector<uint32_t> charges;
-  //uint32_t tmpAddress=0;
 
   uint32_t tmpTimestamp = 0;
   uint32_t tmpAddress   = 0;
@@ -224,11 +288,9 @@ void MakeEmmaTDC(uint32_t* pdata ,int size) {
       case 0x1:  //tdc header
         tmpAddress = (datum>>12)&0xfff; // event ID 
         break;
-      case 0x0:  //tdc measurement
-        addresses.push_back((datum >> 21) & 0x1f); // CHANNEL 
+      case 0x0:
+        addresses.push_back((datum >> 21) & 0x1f); 
         charges.push_back(datum & 0x1fffff); // TDC MEASUREMENT
-        //addresses.push_back(0x900000 + ((datum >> 19) & 0xff ) );  
-        //charges.push_back(datum & 0x7ffff);
         break;
       case 0x3:  //tdc trailer
         break;
@@ -258,16 +320,21 @@ void MakeEmmaTDC(uint32_t* pdata ,int size) {
           //  }
           //}
           //if (duped) continue;
-
           std::unique_ptr<Fragment> frag = std::make_unique<Fragment>();
           frag.get()->AddCharge(charges.at(i));
           frag.get()->AddInt(5);
-          frag.get()->SetAddress(addresses.at(i));
-          frag.get()->SetTimestamp(ts);
+          frag.get()->SetAddress(0x900000 + addresses.at(i));
+          if(xferhfts>0){
+            frag.get()->SetTimestamp(xferhfts);
+          }else {
+            frag.get()->SetTimestamp(ts/5); // convert it to unit = 50ns 
+            printf("no EMMA ADC in this event\n");
+          }
           frag.get()->SetCfd(0);             
           frag.get()->SetFilterPattern(0);
           frag.get()->SetPileup(0);
           frag.get()->SetDetType(14);
+          frag.get()->SetTimestampUnit(50);
 
 
            int c     = frag.get()->Address()&0xff;
@@ -275,8 +342,8 @@ void MakeEmmaTDC(uint32_t* pdata ,int size) {
            Histogramer::Get()->Fill("eTDC",4000,0,64000,chg,
                                            1000,0,1000,c);
 
+          //printf("%s(%i): %lu\n",frag.get()->Name().c_str(),frag.get()->DetType(),frag.get()->TimestampNs());
           //printf("EMMA TDC\n");
-          //frag.get()->Print();
           EventBuilder::Get()->push(std::move(frag));
         }
         addresses.clear();
@@ -310,19 +377,9 @@ void MakeTigressFragments(uint32_t *pdata,int size) {
       std::unique_ptr<Fragment> frag = std::make_unique<Fragment>();
       int i=0;
       if(frag.get()->Unpack(pStart,nwords)) {
-//=========================================================================================================//        
-        //if(frag.get()->DetType() == 0) {
-        //  std::string name = frag.get()->Name();
-        //  int  det   = std::stoi(frag->Name().substr(3,2));
-        //  char color = frag->Name().at(5);  
-        //  int  xtal  = (color == 'B') ? 0 : 
-        //               (color == 'G') ? 1 : 
-        //               (color == 'R') ? 2 : 
-        //               (color == 'W') ? 3 : -1;
-        //  Histogramer::Fill("Frags","summary",70,0,70,det*4 +xtal,8000,0,4000,frag->Energy());
-        //  Histogramer::Fill(Form("Frags/x%02i%c",det,color),"gain",3600,0,3600,frag->Time()/1e8,4000,0,4000,frag->Energy());
-        //}
+        //printf("CH%i: %i\n",frag.get()->Number(),frag.get()->DetType());
         good++;
+        //printf("%s(%i): %lu\n",frag.get()->Name().c_str(),frag.get()->DetType(),frag.get()->TimestampNs());
         EventBuilder::Get()->push(std::move(frag));
 //=========================================================================================================//
       }else{
