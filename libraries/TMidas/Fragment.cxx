@@ -1,8 +1,10 @@
 
 #include <Fragment.h>
 #include <TRandom.h>
+#include <TVector3.h>
 
 #include <globals.h>
+#include <TigressGeometry.h>
 #include <cstdint>
 
 Fragment::Fragment() { } 
@@ -101,11 +103,13 @@ bool Fragment::Unpack(uint32_t *data,int &nwords) {
   AddCharge(tempChg);
   
   SetTimestampUnit(10);
+  SetTheta();
   //Print();
   return true;
   //return bytes_processed;
 }
 
+// =========== Print() ================= //
 void Fragment::Print(Option_t *opt) const {
   Channel *c = Channel::Get(fAddress);
   printf("fragment @ 0x%016lx\n",fTimestamp);
@@ -128,7 +132,61 @@ void Fragment::Print(Option_t *opt) const {
   }  
 }
 
+// =========== SetTheta() ================= //
+void Fragment::SetTheta(){
+  Channel *c = Channel::Get(fAddress); 
+  std::string name = c->Name();
+  if(name.length()<9) return;
+  if(name.substr(0,3)!="TIG") return;
+  int  det   = atoi(name.substr(3,2).c_str());
+  char color = name.at(5);
+  int  xtal  = (color == 'B') ? 0 :
+               (color == 'G') ? 1 :
+               (color == 'R') ? 2 :
+               (color == 'W') ? 3 : -1;
+  int  seg   = atoi(name.substr(7,2).c_str());
+  if(seg==0) seg = 8; // sge=0 ==> "00A or 00B", then set seg = 8, got core from TigressGeometry
+  double   xx = 0;
+  double   yy = 0;
+  double   zz = 0;
+  switch(xtal){
+    case 0:
+      xx = TigressGeometry::GeBluePositionBack[det][seg][0];
+      yy = TigressGeometry::GeBluePositionBack[det][seg][1];
+      zz = TigressGeometry::GeBluePositionBack[det][seg][2]; 
+      break;
+    case 1:
+      xx = TigressGeometry::GeGreenPositionBack[det][seg][0];
+      yy = TigressGeometry::GeGreenPositionBack[det][seg][1];
+      zz = TigressGeometry::GeGreenPositionBack[det][seg][2];
+      break;
+    case 2:
+      xx = TigressGeometry::GeRedPositionBack[det][seg][0];
+      yy = TigressGeometry::GeRedPositionBack[det][seg][1];
+      zz = TigressGeometry::GeRedPositionBack[det][seg][2];
+      break;
+    case 3:
+      xx = TigressGeometry::GeWhitePositionBack[det][seg][0];
+      yy = TigressGeometry::GeWhitePositionBack[det][seg][1];
+      zz = TigressGeometry::GeWhitePositionBack[det][seg][2];
+      break;
+    default:
+      return;
+  }
+  TVector3 det_pos;
+  det_pos.SetXYZ(xx, yy, zz);
+  fTheta = det_pos.Theta();
+}
 
+// =========== SetTheta() ================= //
+double Fragment::Doppler(double beta){
+  if(fTheta<0) return Energy();
+  double gamma = 1 / (sqrt(1 - pow(beta, 2)));
+  double tmp   = Energy() * gamma * (1 - beta * TMath::Cos(fTheta));
+  return tmp;
+}
+
+// =========== Charge() ================= //
 float Fragment::Charge()   const { // { return float(fCharge.at(0))/float(fInt.at(0)); }
   if(!fCharge.empty() && !fInt.empty())
     return float(fCharge.at(0))/(float(fInt.at(0)/5.)); 
@@ -136,12 +194,14 @@ float Fragment::Charge()   const { // { return float(fCharge.at(0))/float(fInt.a
 
 }
 
+// =========== Energy() ================= //
 float Fragment::Energy() const {
   if(!fEnergy.empty()) 
     return fEnergy.at(0); 
   return -1;
 }
 
+// =========== AddCharge() ================= //
 void Fragment::AddCharge(int charge) {
   float chg = float(charge) +  gRandom->Uniform();
   fCharge.push_back(chg);

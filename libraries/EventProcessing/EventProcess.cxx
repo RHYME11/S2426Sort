@@ -60,7 +60,7 @@ void EventProcess::loop() {
     std::vector<std::unique_ptr<Fragment> >                emmaadc;
     std::vector<std::unique_ptr<Fragment> >                emmatdc;
     
-
+    fCounter[0]++;
     for(size_t i=0;i<builtfrags.size();i++){
       //if(i==0) printf("\n\n=======================================================\n");
       //printf("%s(0x%08x): %lu\n",builtfrags.at(i).get()->Name().c_str(), 
@@ -75,6 +75,7 @@ void EventProcess::loop() {
           cores.push_back(std::move(builtfrags.at(i)));
           break;
         case 1: // likely tigress core (nid)
+          printf("\n\n\ntig core B triggered @ CH%i\n",builtfrags.at(i).get()->Number());
           break;
         case 2: //tigress segment
           break;
@@ -95,29 +96,12 @@ void EventProcess::loop() {
           break;
       }
     }
-// =================== EMMA master Trigger ===========================//
-    //if(emmat.size()>1) printf("EMMA master trigger has more than one in the event!!!!!!!!!!!!!!!!!!\n\n\n");
-    for(auto it = emmat.begin(); it!=emmat.end(); ++it){
-      auto& current = *it;
-      if(last_EMT>0){
-        Histogramer::Get()->Fill("EMT_dt",1e6,0,1e6,current->TimestampNs()-last_EMT);
-        Histogramer::Get()->Fill("EMT_dt_ts",1e3,0,1e3,(current->TimestampNs()-last_EMT)/1e3,
-                                              4000,0,4000, current->TimestampNs()/1e9);
-      }
-      last_EMT = current->TimestampNs();
-    }
 
-    if(emmaadc.size()>0 && emmatdc.size()==0) 
-      Histogramer::Get()->Fill("Event/Size","single_adc",100,0,100,emmaadc.size());
-    if(emmaadc.size()==0 && emmatdc.size()>0) 
-      Histogramer::Get()->Fill("Event/Size","single_tdc",100,0,100,emmatdc.size());
-    if(emmaadc.size()==0 && cores.size()>0) 
-      Histogramer::Get()->Fill("Event/Size","single_cores_noemma",100,0,100,cores.size()); 
-    if(emmaadc.size()>0 && cores.size()==0) 
-      Histogramer::Get()->Fill("Event/Size","single_emma_notig",100,0,100,emmaadc.size()); 
- 
+
+
 // =================== EMMA ADC ===========================//
     std::map<int,std::vector<double>> ics;
+    std::map<int,std::vector<long>>   icst;
     std::vector<double> si;
     for(auto it = emmaadc.begin(); it!=emmaadc.end(); ++it){
       auto& current = *it;
@@ -125,9 +109,10 @@ void EventProcess::loop() {
       float chg = current->Charge();
       long timestamp = current->Timestamp(); 
       long tsns      = current->TimestampNs();
-      Histogramer::Get()->Fill("Event/EMMA","eADC_event",4000,0,64000,chg, 1000,0,1000,c);
+      //Histogramer::Get()->Fill("Event/EMMA","eADC_event",4000,0,64000,chg, 1000,0,1000,c);
       if(c>15 && c<20) {
         ics[c-16].push_back(chg);
+        icst[c-16].push_back(tsns);
       }
       if(c == 3) {
         si.push_back(chg);
@@ -146,14 +131,12 @@ void EventProcess::loop() {
 		for(int i = 0; i < 4; ++i) {
       Histogramer::Get()->Fill("Event/EMMA", Form("ic%d_vs_sum",i), 4000, 0, 4000, sum,4000, 0, 4000, ic_sum[i]);
 		  Histogramer::Get()->Fill("Event/EMMA", Form("ic%d_vs_si",i),  4000, 0, 4000, sic,4000, 0, 4000, ic_sum[i]);
-	    Histogramer::Get()->Fill("Event/Size",Form("ic%i_size",i),10,0,10,ics[i].size());	
 		  for(int j = i + 1; j < 4; ++j) {
 		   	if(ic_sum.count(i) && ic_sum.count(j)) {
 		   		Histogramer::Get()->Fill("Event/EMMA",Form("ic%d_vs_ic%d", i, j),4000, 0, 4000, ic_sum[i],4000, 0, 4000, ic_sum[j]);
 		   	}
 		  }
 		} 
-	  Histogramer::Get()->Fill("Event/Size","si_size",10,0,10,si.size());	
 
 // ============================================================//
 
@@ -188,7 +171,7 @@ void EventProcess::loop() {
   		double Xpos = ( Xdiff / Xsum )*fXlength;
   		double Ypos = ( Ydiff / Ysum )*fYlength;
 			TVector3 pgac(Xpos, Ypos, 1);
-			Histogramer::Fill("PGAC","focalplanx_y", 60,-30,30,pgac.X(),60,-30,30,pgac.Y());
+			Histogramer::Get()->Fill("Event/PGAC","focalplanx_y", 60,-30,30,pgac.X(),60,-30,30,pgac.Y());
 		}
 // ============================================================//
 
@@ -198,8 +181,9 @@ void EventProcess::loop() {
         const std::unique_ptr<Fragment>& b) {
         return a->Energy() > b->Energy();  // decending order.
     });
-	  Histogramer::Get()->Fill("Event/Size","core_size",20,0,20,cores.size());	
 
+    std::vector<double> vec_doppler;
+    std::vector<long>   vec_ts;
     for(auto it = cores.begin(); it != cores.end(); ++it) {
       auto& current = *it;
       //std::cout << "frag name = [" << current->Name() << "] [" << current->DetType() << "]" << std::endl;
@@ -210,38 +194,88 @@ void EventProcess::loop() {
                    (color == 'G') ? 1 :
                    (color == 'R') ? 2 :
                    (color == 'W') ? 3 : -1;
-      Histogramer::Fill("Event","summary_energy",70,0,70,det*4 +xtal,8000,0,4000,current->Energy());
-      if(emmaadc.size()==0)
-        Histogramer::Fill("Event","summary_energy_noemma",70,0,70,det*4 +xtal,8000,0,4000,current->Energy());
-      //Histogramer::Fill("Event","summary_charge",70,0,70,det*4 +xtal,16000,0,16000,current->Charge());
-      //Histogramer::Fill(Form("Event/x%02i%c",det,color),"time_charge",7200,0,72000,current->Time()/1e8,16000,0,16000,current->Charge());
+      Histogramer::Get()->Fill("Event","summary_energy", 70,0,70,det*4 +xtal,8000,0,4000,current->Energy());
+      Histogramer::Get()->Fill("Event","summary_doppler",70,0,70,det*4 +xtal,8000,0,4000,current->Doppler(0.0565));
+      //Histogramer::Get()->Fill("Event","summary_charge",70,0,70,det*4 +xtal,16000,0,16000,current->Charge());
+      //Histogramer::Get()->Fill(Form("Event/x%02i%c",det,color),"time_charge",7200,0,72000,current->Time()/1e8,16000,0,16000,current->Charge());
       long timestamp = current->Timestamp();
       long tsns      = current->TimestampNs();
-      auto next = std::next(it);
-      if(next == cores.end())
-        break;  // no next element
-      auto& nextCore = *next;
-      if(nextCore->Name().size()<10) continue;
-      Histogramer::Fill("Event","dtime",4000,-2000,2000,current->Time() - nextCore->Time(),4000,0,4000,nextCore->Energy());
-      Histogramer::Fill("Event","dtimestamp",4000,-2000,2000,current->Timestamp() - nextCore->Timestamp(),4000,0,4000,nextCore->Energy());
+      vec_doppler.push_back(current->Doppler(0.0565));
+      vec_ts.push_back(tsns);
+      //auto next = std::next(it);
+      //if(next == cores.end()) break;  // no next element
+      //auto& nextCore = *next;
+      //if(nextCore->Name().size()<10) continue;
+      //Histogramer::Get()->Fill("Event","dtime",6000,-3000,3000,current->Time() - nextCore->Time(),4000,0,4000,nextCore->Energy());
+      //Histogramer::Get()->Fill("Event","dtimestamp",4000,-2000,2000,current->Timestamp() - nextCore->Timestamp(),4000,0,4000,nextCore->Energy());
     }
+    if(icst[0].size()>0 && vec_ts.size()>0){
+      fCounter[1]++;
+      for(int i=0;i<icst[0].size();i++){
+        for(int j=0;j<vec_ts.size();j++){
+          Histogramer::Get()->Fill("Event/Good","dtns_ADC_TIG",2e3,-1e4,1e4,double(icst[0][i]-vec_ts[j]),4e3,0,4e3,vec_doppler[j]);
+        }
+      }
+      Histogramer::Get()->Fill("Event/Good","core_size",100,0,100,vec_ts.size());
+      Histogramer::Get()->Fill("Event/Good","IC0_size" ,100,0,100,icst[0].size()); 
+      Histogramer::Get()->Fill("Event/Good","IC0x_corey_size" ,100,0,100,icst[0].size(),100,0,100,vec_ts.size()); 
+      if(right<0 || left<0 || top<0 || bottom<0) fCounter[2]++;
+      if(right<0 || left<0) fCounter[3]++;
+	    for(int i = 0; i < 4; ++i) {
+        Histogramer::Get()->Fill("Event/Good/EMMA", Form("ic%d_vs_sum",i), 4000, 0, 4000, sum,4000, 0, 4000, ic_sum[i]);
+	      Histogramer::Get()->Fill("Event/Good/EMMA", Form("ic%d_vs_si",i),  4000, 0, 4000, sic,4000, 0, 4000, ic_sum[i]);
+	      for(int j = i + 1; j < 4; ++j) {
+	       	if(ic_sum.count(i) && ic_sum.count(j)) {
+	       		Histogramer::Get()->Fill("Event/Good/EMMA",Form("ic%d_vs_ic%d", i, j),4000, 0, 4000, ic_sum[i],4000, 0, 4000, ic_sum[j]);
+	       	}
+	      }
+	    } 
+	    if(left>0 && right>0 && top>0 && bottom>0){
+	    	double Xdiff = (left+fLdelay) - (right+fRdelay);
+	    	double Xsum = (left) + (right);
+      	double Ydiff = (bottom+fBdelay) - (top+fTdelay);
+      	double Ysum = (bottom) + (top);              
+      	double Xpos = ( Xdiff / Xsum )*fXlength;
+      	double Ypos = ( Ydiff / Ysum )*fYlength;
+	    	TVector3 pgac(Xpos, Ypos, 1);
+	    	Histogramer::Get()->Fill("Event/Good/PGAC","focalplanx_y", 60,-30,30,pgac.X(),60,-30,30,pgac.Y());
+        for(int j=0;j<vec_doppler.size();j++){
+          Histogramer::Get()->Fill("Event/Good/PGAC","pgacx_doppler_allchn",60,-30,30,pgac.X(),4e3,0,4e3,vec_doppler[j]);
+        }
+	    }
+	    if(left>0 && right>0){
+	    	double Xdiff = (left+fLdelay) - (right+fRdelay);
+	    	double Xsum = (left) + (right);
+      	double Xpos = ( Xdiff / Xsum )*fXlength;
+        for(int j=0;j<vec_doppler.size();j++){
+          Histogramer::Get()->Fill("Event/Good/PGAC","pgacx_doppler",60,-30,30,Xpos,4e3,0,4e3,vec_doppler[j]);
+        }
+	    }
+    } // good event over
+
+    if(icst[0].size()==0 && vec_ts.size()>0){
+      for(int j=0;j<vec_ts.size();j++){
+        Histogramer::Get()->Fill("Event","single_noemma",4e3,0,4e3,vec_doppler[j]);
+      }
+    }
+      
 // ============================================================//
 
 
-//   // else process the frags.
-//   
-//   //switchboard....
-//
-//   //printf("built frags size: %lu \n",builtfrags.size());
-//
-//   for(size_t i=0;i<builtfrags.size();i++) 
-//     if(builtfrags[i]) delete builtfrags[i];
-//
-//
-//   //we let them go out of scope.  
-//   
-//   //checks que
-//   // - if true; pass built events;
-    // - if flase; sleep;
   }
 };
+
+
+// ======================== PrintCounter() ====================================//
+void EventProcess::PrintCounter() const {
+  printf("\n===== EventProcess Counters =====\n");
+
+  for(int i = 0; i < 100; i++) {
+    if(fCounter[i] == 0) continue;
+    printf("fCounter[%02d] = %ld\n", i, fCounter[i]);
+  }
+
+  printf("=================================\n\n");
+}
+
+

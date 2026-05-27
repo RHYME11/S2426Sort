@@ -1,5 +1,6 @@
 
 #include<EventBuilder.h>
+#include<Histogramer.h>
 
 EventBuilder *EventBuilder::fEventBuilder = 0;
 
@@ -60,6 +61,7 @@ void EventBuilder::push(std::unique_ptr<Fragment> frag) {
 bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment> > &Builtfrags) {
   std::lock_guard<std::mutex> lk(fMutex);
 
+
   if(fQueue.empty()) return false;
 
   if(fQueue.size()<20000000) {
@@ -69,29 +71,54 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment> > &Builtfrags) {
   }
   {
     auto& top_ref = const_cast<std::unique_ptr<Fragment>&>(fQueue.top());
-    //printf("First:%s(%i): %lu\n",top_ref->Name().c_str(),top_ref->DetType(),top_ref->TimestampNs());
+    // ================================ //
+    if(fADCts>0 && fEMMAT>0) Histogramer::Get()->Fill("EventBuilder","dtns_ADC_EMT",2e3,-1e4,1e4,double(fADCts-fEMMAT));
+    if(fEMMAT>0 && fTIGts>0) Histogramer::Get()->Fill("EventBuilder","dtns_EMT_TIG",2e3,-1e4,1e4,double(fEMMAT-fTIGts) );
+    if(fADCts>0 && fTIGts>0) Histogramer::Get()->Fill("EventBuilder","dtns_ADC_TIG",2e3,-1e4,1e4,double(fADCts-fTIGts),4e3,0,4e3,fE);
+    if(top_ref.get()->Number()<720 && (top_ref.get()->Number())%15==9) {
+      if(top_ref.get()->Energy()>=20 && top_ref.get()->Energy()<=4000) {
+        fTIGts = top_ref.get()->TimestampNs();
+        fE = top_ref.get()->Doppler(0.0565);
+      }
+    }
+    if(top_ref.get()->Number()==849) fEMMAT = top_ref.get()->TimestampNs();
+    if(top_ref.get()->DetType()==13 && (top_ref.get()->Address()&0xff)==16) {
+      if(fADCts>0) Histogramer::Get()->Fill("EventBuilder","dtns_ADC",2e3,1e-4,1e-4,top_ref.get()->TimestampNs()-fADCts);
+      fADCts = top_ref.get()->TimestampNs();
+    }
+    // ================================ //
     Builtfrags.emplace_back(std::move(top_ref));
     fQueue.pop(); 
   }
 
   //printf("i am here c\n");
-  //long firstTime = Builtfrags.at(0).get()->Timestamp(); 
   long firstTime = Builtfrags.at(0).get()->TimestampNs(); 
   long topTime = -1;
   while(1) {   //currently this never ends...?
     if(fQueue.empty()) {
       break;
     }
-    //topTime = fQueue.top().get()->Timestamp();
     topTime = fQueue.top().get()->TimestampNs();
-    //printf("\n\n\n\nabs(firstTime - topTime): %lu\n\n\n\n",abs(firstTime - topTime));
-    if(abs(firstTime - topTime)>2500) {
-      //printf("====BREAK by window: firstTime = %lu, topTime = %ld, diff = %ld, queue size(%d) = %lu====\n\n\n",
-      // firstTime, topTime, labs(firstTime - topTime), (int)fStop.load(), fQueue.size());
+    if(abs(firstTime - topTime)>2500) {  
       break;
     }
     auto& top_ref = const_cast<std::unique_ptr<Fragment>&>(fQueue.top());
-    //printf("%s(%i): %lu\n",top_ref->Name().c_str(),top_ref->DetType(),top_ref->TimestampNs());
+    // ================================ //
+    if(fADCts>0 && fEMMAT>0) Histogramer::Get()->Fill("EventBuilder","dtns_ADC_EMT",2e3,-1e4,1e4,double(fADCts-fEMMAT));
+    if(fEMMAT>0 && fTIGts>0) Histogramer::Get()->Fill("EventBuilder","dtns_EMT_TIG",2e3,-1e4,1e4,double(fEMMAT-fTIGts));
+    if(fADCts>0 && fTIGts>0) Histogramer::Get()->Fill("EventBuilder","dtns_ADC_TIG",2e3,-1e4,1e4,double(fADCts-fTIGts),4e3,0,4e3,fE);
+    if(top_ref.get()->Number()<720 && (top_ref.get()->Number())%15==9) {
+      if(top_ref.get()->Energy()>=20 && top_ref.get()->Energy()<=4000) {
+        fTIGts = top_ref.get()->TimestampNs();
+        fE = top_ref.get()->Doppler(0.0565);
+      }
+    }
+    if(top_ref.get()->Number()==849) fEMMAT = top_ref.get()->TimestampNs();
+    if(top_ref.get()->DetType()==13 && (top_ref.get()->Address()&0xff)==16) {
+      if(fADCts>0) Histogramer::Get()->Fill("EventBuilder","dtns_ADC",2e3,1e-4,1e-4,top_ref.get()->TimestampNs()-fADCts);
+      fADCts = top_ref.get()->TimestampNs();
+    }
+    // ================================ //
     Builtfrags.emplace_back(std::move(top_ref));
     fQueue.pop();
   }

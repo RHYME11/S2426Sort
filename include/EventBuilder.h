@@ -65,6 +65,12 @@ class EventBuilder {
 
     std::atomic_bool fStop{false};
     std::thread fWorker;
+// ============= temp ============== //    
+    long fADCts = {-1};
+    long fEMMAT = {-1};
+    long fTIGts;
+    double fE;
+// ================================ //
 };
 
 

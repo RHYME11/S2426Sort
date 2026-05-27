@@ -30,10 +30,9 @@ class Fragment {
     void SetFilterPattern(int fp)     { fFilterPattern = fp; }    
     void SetPileup(int pileup)        { fPileup = pileup; }  
     void SetTimestampUnit(int timestampunit) {fTimestampUnit = timestampunit;}
-
     void AddCharge(int chg); //           { fCharge.push_back(chg); }
     void AddInt(int i)                { fInt.push_back(i); }
-  
+    void SetTheta(); 
 
     int  Address()   const { return fAddress; }
     int  DetType()   const { return fDetType; }
@@ -54,6 +53,8 @@ class Fragment {
     std::string Name() const { return   Channel::Get(fAddress)->Name(); }  
 
     long TimestampNs()  const {return fTimestamp * fTimestampUnit;}
+    double Theta() const {return fTheta;}
+    double Doppler(double beta);    
 
     bool operator<(const Fragment& other) const { 
       //if(timestamp != other.timestamp) 
@@ -80,7 +81,7 @@ class Fragment {
     std::vector<int> fInt;
     std::vector<float> fCharge;
     std::vector<float> fEnergy;
-
+    double fTheta{-1};
   //ClassDef(Fragment,1);
 };
 

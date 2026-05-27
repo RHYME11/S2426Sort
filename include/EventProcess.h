@@ -25,6 +25,7 @@ class EventProcess {
     bool     Running() const { return !fStop.load(); }
     uint32_t Pushed() const { return fPushed.load(); }
     uint32_t Popped() const { return fPopped.load(); }
+    void PrintCounter() const;
 
 
   private:
@@ -41,6 +42,9 @@ class EventProcess {
 
     std::atomic_bool fStop{false};
     std::thread fWorker;
+// =============== temp ============== //
+    long fCounter[100] = {0};
+// ================================== //
 };
 
 

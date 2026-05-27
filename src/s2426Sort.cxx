@@ -30,7 +30,7 @@ auto timeEllapsed = std::chrono::duration_cast<std::chrono::seconds>(lastPrint-s
 const std::chrono::seconds interval(1); // 1 second interval
 
 static Long64_t xferhfts;     // Time stamp to be transferred from ADC to TDC; 10 ns ticks
-int gl_counter, gl_counter1, gl_counter2, gl_counter3;
+int gl_counter1, gl_counter2, gl_counter3, gl_counter4;
 
 int main(int argc, char **argv) {
   
@@ -86,33 +86,32 @@ int main(int argc, char **argv) {
           //event.Print("all");
           //printf("\n------------------------------------------ \n\n");
         } else if((banksize = event.LocateBank(nullptr, "EMMT", &ptr)) > 0) {
-           MakeEmmaTDC((uint32_t*)ptr,banksize); 
-          printf("EMMA TDC found out of MADC\n");          
+            MakeEmmaTDC((uint32_t*)ptr,banksize); 
+            printf("EMMA TDC found out of MADC\n");          
         }
       case 2:  //scalar
       case 5:  //epics
         break;
       case 0x8000: //BOR (odb)
-      case 0x8001: //EOR
+      case 0x8001: //This one should be ODB (EOR)
         event.Print();
+        break;
       case 0x8002: //message Event;
         break;
     };
     typeFound[event.GetEventId()]++;
     counter++;
     doStatus(infile);
-    //if(counter>100) break;
-  }
-  //printf("\n\n\n total count = %i\n\n\n",counter);
+  } 
   EventBuilder::Get()->Stop();
   while(EventBuilder::Get()->Size() > 0) {
     doStatus(infile,true,true);
-    //printf("counter = %i fQueue.size() = %i\n",counter, EventBuilder::Get()->Size());
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
   
   doStatus(infile,true,false);
   gHist->Close();
+  EventProcess::Get()->PrintCounter();
   return 0;  
 }
 
@@ -242,8 +241,8 @@ void MakeEmmaADC(uint32_t* pdata,int size) {
           xferhfts = frag.get()->Timestamp();
           int c     = frag.get()->Address()&0xff;
           float chg = frag.get()->Charge(); 
-          Histogramer::Get()->Fill("eADC",4000,0,64000,chg,
-                                           1000,0,1000,c);
+          //Histogramer::Get()->Fill("eADC",4000,0,64000,chg,
+          //                                 1000,0,1000,c);
           //printf("%s(%i): %lu\n",frag.get()->Name().c_str(),frag.get()->DetType(),frag.get()->TimestampNs());
           EventBuilder::Get()->push(std::move(frag));
         }
@@ -339,8 +338,8 @@ void MakeEmmaTDC(uint32_t* pdata ,int size) {
 
            int c     = frag.get()->Address()&0xff;
            float chg = frag.get()->Charge(); 
-           Histogramer::Get()->Fill("eTDC",4000,0,64000,chg,
-                                           1000,0,1000,c);
+           //Histogramer::Get()->Fill("eTDC",4000,0,64000,chg,
+           //                                1000,0,1000,c);
 
           //printf("%s(%i): %lu\n",frag.get()->Name().c_str(),frag.get()->DetType(),frag.get()->TimestampNs());
           //printf("EMMA TDC\n");
@@ -379,7 +378,6 @@ void MakeTigressFragments(uint32_t *pdata,int size) {
       if(frag.get()->Unpack(pStart,nwords)) {
         //printf("CH%i: %i\n",frag.get()->Number(),frag.get()->DetType());
         good++;
-        //printf("%s(%i): %lu\n",frag.get()->Name().c_str(),frag.get()->DetType(),frag.get()->TimestampNs());
         EventBuilder::Get()->push(std::move(frag));
 //=========================================================================================================//
       }else{

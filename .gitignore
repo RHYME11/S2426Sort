@@ -17,6 +17,7 @@ a.out
 *.dat
 *.c
 *.bak
+*.ods*
 
 .DS_Store
 
