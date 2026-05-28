@@ -94,22 +94,22 @@ int main(int argc, char **argv) {
         break;
       case 0x8000: //BOR (odb)
       case 0x8001: //This one should be ODB (EOR)
-        event.Print();
+        //event.Print();
         break;
       case 0x8002: //message Event;
         break;
     };
     typeFound[event.GetEventId()]++;
     counter++;
-    doStatus(infile);
+    //doStatus(infile);
   } 
   EventBuilder::Get()->Stop();
   while(EventBuilder::Get()->Size() > 0) {
-    doStatus(infile,true,true);
+    //doStatus(infile,true,true);
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
   
-  doStatus(infile,true,false);
+  //doStatus(infile,true,false);
   gHist->Close();
   EventProcess::Get()->PrintCounter();
   return 0;  
@@ -244,6 +244,27 @@ void MakeEmmaADC(uint32_t* pdata,int size) {
           //Histogramer::Get()->Fill("eADC",4000,0,64000,chg,
           //                                 1000,0,1000,c);
           //printf("%s(%i): %lu\n",frag.get()->Name().c_str(),frag.get()->DetType(),frag.get()->TimestampNs());
+          //printf("%s\t"
+          //       "0x%08x\t"
+          //       "%d\t"
+          //       "%d\t"
+          //       "%ld\t"
+          //       "%ld\t"
+          //       "%.16f\t"
+          //       "%f\t"
+          //       "%f\t"
+          //       "%.16f\n",
+          //       frag.get()->Name().c_str(),
+          //       (unsigned int)frag.get()->Address(),
+          //       frag.get()->Number(),
+          //       frag.get()->DetType(),
+          //       frag.get()->Timestamp(),
+          //       frag.get()->TimestampNs(),
+          //       frag.get()->Time(),
+          //       frag.get()->Charge(),
+          //       frag.get()->Energy(),
+          //       frag.get()->Theta()
+          //      );
           EventBuilder::Get()->push(std::move(frag));
         }
         break;   
@@ -343,6 +364,27 @@ void MakeEmmaTDC(uint32_t* pdata ,int size) {
 
           //printf("%s(%i): %lu\n",frag.get()->Name().c_str(),frag.get()->DetType(),frag.get()->TimestampNs());
           //printf("EMMA TDC\n");
+          //printf("%s\t"
+          //       "0x%08x\t"
+          //       "%d\t"
+          //       "%d\t"
+          //       "%ld\t"
+          //       "%ld\t"
+          //       "%.16f\t"
+          //       "%f\t"
+          //       "%f\t"
+          //       "%.16f\n",
+          //       frag.get()->Name().c_str(),
+          //       (unsigned int)frag.get()->Address(),
+          //       frag.get()->Number(),
+          //       frag.get()->DetType(),
+          //       frag.get()->Timestamp(),
+          //       frag.get()->TimestampNs(),
+          //       frag.get()->Time(),
+          //       frag.get()->Charge(),
+          //       frag.get()->Energy(),
+          //       frag.get()->Theta()
+          //      );
           EventBuilder::Get()->push(std::move(frag));
         }
         addresses.clear();
@@ -378,6 +420,27 @@ void MakeTigressFragments(uint32_t *pdata,int size) {
       if(frag.get()->Unpack(pStart,nwords)) {
         //printf("CH%i: %i\n",frag.get()->Number(),frag.get()->DetType());
         good++;
+        //printf("%s\t"
+        //       "0x%08x\t"
+        //       "%d\t"
+        //       "%d\t"
+        //       "%ld\t"
+        //       "%ld\t"
+        //       "%.16f\t"
+        //       "%f\t"
+        //       "%f\t"
+        //       "%.16f\n",
+        //       frag.get()->Name().c_str(),
+        //       (unsigned int)frag.get()->Address(),
+        //       frag.get()->Number(),
+        //       frag.get()->DetType(),
+        //       frag.get()->Timestamp(),
+        //       frag.get()->TimestampNs(),
+        //       frag.get()->Time(),
+        //       frag.get()->Charge(),
+        //       frag.get()->Energy(),
+        //       frag.get()->Theta()
+        //      );
         EventBuilder::Get()->push(std::move(frag));
 //=========================================================================================================//
       }else{

@@ -7,6 +7,8 @@ data/
 
 macros/
 
+histOutput/
+
 *.o
 *.so
 *.pcm

@@ -6,7 +6,7 @@ set -euo pipefail
 # Configuration
 # -------------------------------
 
-RUNS=(62183)
+RUNS=($(seq 62179 62187))
 
 DATA_DIR="/data1/yzhu/Projects/S2426/raw_data"
 SORTER="./bin/s2426Sort"
@@ -14,6 +14,8 @@ OUT_DIR="./histOutput"
 
 MAX_PARALLEL=1
 RUN_LOG="${OUT_DIR}/run.log"
+
+SAVE_FRAGMENT_LOG=0   # 1 = save printout to txt, 0 = print to terminal
 
 mkdir -p "${OUT_DIR}"
 : > "${RUN_LOG}"
@@ -25,7 +27,7 @@ process_run() {
   local run="$1"
   local files=()
   local rootfiles=()
-  local tmp_log=""
+  local frag_log=""
 
   shopt -s nullglob
   files=(${DATA_DIR}/run${run}_*.mid)
@@ -41,16 +43,23 @@ process_run() {
   for midfile in "${files[@]}"; do
     echo "[INFO]   Processing $(basename "${midfile}")"
 
-    tmp_log="${OUT_DIR}/tmp_$(basename "${midfile}" .mid).log"
+    frag_log="${OUT_DIR}/$(basename "${midfile}" .mid).txt"
 
     set +e
-    "${SORTER}" "${midfile}" > "${tmp_log}" 2>&1
+    if [ "${SAVE_FRAGMENT_LOG}" -eq 1 ]; then
+      "${SORTER}" "${midfile}" > "${frag_log}" 2>&1
+    else
+      "${SORTER}" "${midfile}"
+    fi
     status=$?
     set -e
 
     if [ ${status} -eq 0 ]; then
       echo "[INFO]   Finished $(basename "${midfile}")"
-      rm -f "${tmp_log}"
+
+      if [ "${SAVE_FRAGMENT_LOG}" -eq 1 ]; then
+        echo "[INFO]   Fragment log saved to ${frag_log}"
+      fi
     else
       echo "[ERROR]   Failed on $(basename "${midfile}")"
 
@@ -59,20 +68,22 @@ process_run() {
         echo "FILE: ${midfile}"
         echo "EXIT_STATUS: ${status}"
         echo "ERROR_MESSAGE:"
-        tail -n 30 "${tmp_log}"
+
+        if [ "${SAVE_FRAGMENT_LOG}" -eq 1 ]; then
+          tail -n 30 "${frag_log}"
+        else
+          echo "Fragment log was not saved."
+        fi
+
         echo ""
       } >> "${RUN_LOG}"
 
-      rm -f "${tmp_log}"
-
-      # Continue to next subrun instead of stopping this run
       continue
     fi
   done
 
   echo "[INFO] Run ${run} merging..."
 
-  # Merge all ROOT files that were actually generated
   shopt -s nullglob
   rootfiles=(${OUT_DIR}/hist${run}_*.root)
   shopt -u nullglob
@@ -93,7 +104,7 @@ process_run() {
 }
 
 export -f process_run
-export DATA_DIR SORTER OUT_DIR RUN_LOG
+export DATA_DIR SORTER OUT_DIR RUN_LOG SAVE_FRAGMENT_LOG
 
 # -------------------------------
 # Parallel execution

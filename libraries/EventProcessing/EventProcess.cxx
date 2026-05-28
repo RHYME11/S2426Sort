@@ -75,7 +75,7 @@ void EventProcess::loop() {
           cores.push_back(std::move(builtfrags.at(i)));
           break;
         case 1: // likely tigress core (nid)
-          printf("\n\n\ntig core B triggered @ CH%i\n",builtfrags.at(i).get()->Number());
+          //printf("\n\n\ntig core B triggered @ CH%i\n",builtfrags.at(i).get()->Number());
           break;
         case 2: //tigress segment
           break;
@@ -147,10 +147,10 @@ void EventProcess::loop() {
 		double fBdelay = 20;
 		double fXlength = 80.; // Size of X focal plane in mm
 		double fYlength = 30.; // Size of Y focal plane in mm
-		double left   = -1;
-		double right  = -1;
-		double top    = -1;
-		double bottom = -1;	
+    std::vector<double> vleft;	
+    std::vector<double> vright;	
+    std::vector<double> vtop;	
+    std::vector<double> vbot;	
 		for(auto it = emmatdc.begin(); it!=emmatdc.end(); ++it){
       auto& current = *it;
       int c     = current->Address()&0xff;
@@ -158,20 +158,26 @@ void EventProcess::loop() {
       long timestamp = current->Timestamp(); 
       long tsns      = current->TimestampNs(); 
       Histogramer::Get()->Fill("Event/EMMA","eTDC_event",4000,0,64000,chg, 1000,0,1000,c);
-			if(c==3) right  = chg;
-			if(c==4) left   = chg;
-			if(c==5) top    = chg;
-			if(c==6) bottom = chg;
+			if(c==3) {vright.push_back(chg);}
+			if(c==4) { vleft.push_back(chg);}
+			if(c==5) {  vtop.push_back(chg);}
+			if(c==6) {  vbot.push_back(chg);}
     }
-		if(left>0 && right>0 && top>0 && bottom>0){
-			double Xdiff = (left+fLdelay) - (right+fRdelay);
-			double Xsum = (left) + (right);
-  		double Ydiff = (bottom+fBdelay) - (top+fTdelay);
-  		double Ysum = (bottom) + (top);              
-  		double Xpos = ( Xdiff / Xsum )*fXlength;
-  		double Ypos = ( Ydiff / Ysum )*fYlength;
-			TVector3 pgac(Xpos, Ypos, 1);
-			Histogramer::Get()->Fill("Event/PGAC","focalplanx_y", 60,-30,30,pgac.X(),60,-30,30,pgac.Y());
+		int vcount = 0;
+    while(vcount<vleft.size() && vcount<vright.size() && vcount<vtop.size() && vcount<vbot.size()){
+      double left   = vleft[vcount];
+      double right  = vright[vcount];
+      double top    = vtop[vcount];
+      double bottom = vbot[vcount];
+      double Xdiff = (left+fLdelay) - (right+fRdelay);
+		  double Xsum = (left) + (right);
+  	  double Ydiff = (bottom+fBdelay) - (top+fTdelay);
+  	  double Ysum = (bottom) + (top);              
+  	  double Xpos = ( Xdiff / Xsum )*fXlength;
+  	  double Ypos = ( Ydiff / Ysum )*fYlength;
+		  TVector3 pgac(Xpos, Ypos, 1);
+		  Histogramer::Get()->Fill("Event/PGAC","focalplanx_y", 60,-30,30,pgac.X(),60,-30,30,pgac.Y());
+      vcount++;
 		}
 // ============================================================//
 
@@ -216,40 +222,48 @@ void EventProcess::loop() {
           Histogramer::Get()->Fill("Event/Good","dtns_ADC_TIG",2e3,-1e4,1e4,double(icst[0][i]-vec_ts[j]),4e3,0,4e3,vec_doppler[j]);
         }
       }
-      Histogramer::Get()->Fill("Event/Good","core_size",100,0,100,vec_ts.size());
-      Histogramer::Get()->Fill("Event/Good","IC0_size" ,100,0,100,icst[0].size()); 
-      Histogramer::Get()->Fill("Event/Good","IC0x_corey_size" ,100,0,100,icst[0].size(),100,0,100,vec_ts.size()); 
-      if(right<0 || left<0 || top<0 || bottom<0) fCounter[2]++;
-      if(right<0 || left<0) fCounter[3]++;
+      Histogramer::Get()->Fill("Event/Good/Size/","core_size",100,0,100,vec_ts.size());
+      Histogramer::Get()->Fill("Event/Good/Size/","IC0_size" ,100,0,100,icst[0].size()); 
+      Histogramer::Get()->Fill("Event/Good/Size/","pgac_left_size"   ,100,0,100,vleft.size()); 
+      Histogramer::Get()->Fill("Event/Good/Size/","pgac_right_size"  ,100,0,100,vright.size()); 
+      Histogramer::Get()->Fill("Event/Good/Size/","pgac_top_size"    ,100,0,100,vtop.size()); 
+      Histogramer::Get()->Fill("Event/Good/Size/","pgac_bottom_size" ,100,0,100,vbot.size()); 
 	    for(int i = 0; i < 4; ++i) {
-        Histogramer::Get()->Fill("Event/Good/EMMA", Form("ic%d_vs_sum",i), 4000, 0, 4000, sum,4000, 0, 4000, ic_sum[i]);
 	      Histogramer::Get()->Fill("Event/Good/EMMA", Form("ic%d_vs_si",i),  4000, 0, 4000, sic,4000, 0, 4000, ic_sum[i]);
-	      for(int j = i + 1; j < 4; ++j) {
-	       	if(ic_sum.count(i) && ic_sum.count(j)) {
-	       		Histogramer::Get()->Fill("Event/Good/EMMA",Form("ic%d_vs_ic%d", i, j),4000, 0, 4000, ic_sum[i],4000, 0, 4000, ic_sum[j]);
-	       	}
-	      }
-	    } 
-	    if(left>0 && right>0 && top>0 && bottom>0){
-	    	double Xdiff = (left+fLdelay) - (right+fRdelay);
-	    	double Xsum = (left) + (right);
-      	double Ydiff = (bottom+fBdelay) - (top+fTdelay);
-      	double Ysum = (bottom) + (top);              
-      	double Xpos = ( Xdiff / Xsum )*fXlength;
-      	double Ypos = ( Ydiff / Ysum )*fYlength;
-	    	TVector3 pgac(Xpos, Ypos, 1);
-	    	Histogramer::Get()->Fill("Event/Good/PGAC","focalplanx_y", 60,-30,30,pgac.X(),60,-30,30,pgac.Y());
+	    }
+      for(int i=0;i<vec_doppler.size();i++){
+        if(vec_doppler[i]>1250 && vec_doppler[i]<1300) Histogramer::Get()->Fill("Event/Good/EMMA", "ic1_vs_si_Eg1273",  4000, 0, 4000, sic,4000, 0, 4000, ic_sum[1]);
+      } 
+	    vcount = 0;
+      while(vcount<vleft.size() && vcount<vright.size() && vcount<vtop.size() && vcount<vbot.size()){
+        double left   = vleft[vcount];
+        double right  = vright[vcount];
+        double top    = vtop[vcount];
+        double bottom = vbot[vcount];
+        double Xdiff = (left+fLdelay) - (right+fRdelay);
+	      double Xsum = (left) + (right);
+        double Ydiff = (bottom+fBdelay) - (top+fTdelay);
+        double Ysum = (bottom) + (top);              
+        double Xpos = ( Xdiff / Xsum )*fXlength;
+        double Ypos = ( Ydiff / Ysum )*fYlength;
+	      TVector3 pgac(Xpos, Ypos, 1);
+	      Histogramer::Get()->Fill("Event/Good/PGAC","focalplanx_y", 60,-30,30,pgac.X(),60,-30,30,pgac.Y());
         for(int j=0;j<vec_doppler.size();j++){
           Histogramer::Get()->Fill("Event/Good/PGAC","pgacx_doppler_allchn",60,-30,30,pgac.X(),4e3,0,4e3,vec_doppler[j]);
         }
+        vcount++;
 	    }
-	    if(left>0 && right>0){
-	    	double Xdiff = (left+fLdelay) - (right+fRdelay);
-	    	double Xsum = (left) + (right);
-      	double Xpos = ( Xdiff / Xsum )*fXlength;
+	    vcount = 0;
+      while(vcount<vleft.size() && vcount<vright.size()){
+        double left   = vleft[vcount];
+        double right  = vright[vcount];
+        double Xdiff = (left+fLdelay) - (right+fRdelay);
+	      double Xsum = (left) + (right);
+        double Xpos = ( Xdiff / Xsum )*fXlength;
         for(int j=0;j<vec_doppler.size();j++){
           Histogramer::Get()->Fill("Event/Good/PGAC","pgacx_doppler",60,-30,30,Xpos,4e3,0,4e3,vec_doppler[j]);
         }
+        vcount++;
 	    }
     } // good event over
 
