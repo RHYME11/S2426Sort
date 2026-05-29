@@ -72,9 +72,9 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment> > &Builtfrags) {
   {
     auto& top_ref = const_cast<std::unique_ptr<Fragment>&>(fQueue.top());
     // ================================ //
-    if(fADCts>0 && fEMMAT>0) Histogramer::Get()->Fill("EventBuilder","dtns_ADC_EMT",2e3,-1e4,1e4,double(fADCts-fEMMAT));
-    if(fEMMAT>0 && fTIGts>0) Histogramer::Get()->Fill("EventBuilder","dtns_EMT_TIG",2e3,-1e4,1e4,double(fEMMAT-fTIGts) );
-    if(fADCts>0 && fTIGts>0) Histogramer::Get()->Fill("EventBuilder","dtns_ADC_TIG",2e3,-1e4,1e4,double(fADCts-fTIGts),4e3,0,4e3,fE);
+    if(fADCts>0 && fEMMAT>0) Histogramer::Get()->Fill("EventBuilder","dtns_ADC_EMT",2e6,-1e9,1e9,double(fADCts-fEMMAT));
+    if(fEMMAT>0 && fTIGts>0) Histogramer::Get()->Fill("EventBuilder","dtns_EMT_TIG",2e5,-1e8,1e8,double(fEMMAT-fTIGts),250,1000,1500,fE);
+    if(fADCts>0 && fTIGts>0) Histogramer::Get()->Fill("EventBuilder","dtns_ADC_TIG",2e5,-1e8,1e8,double(fADCts-fTIGts),250,1000,1500,fE);
     if(top_ref.get()->Number()<720 && (top_ref.get()->Number())%15==9) {
       if(top_ref.get()->Energy()>=20 && top_ref.get()->Energy()<=4000) {
         fTIGts = top_ref.get()->TimestampNs();
@@ -104,9 +104,9 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment> > &Builtfrags) {
     }
     auto& top_ref = const_cast<std::unique_ptr<Fragment>&>(fQueue.top());
     // ================================ //
-    if(fADCts>0 && fEMMAT>0) Histogramer::Get()->Fill("EventBuilder","dtns_ADC_EMT",2e3,-1e4,1e4,double(fADCts-fEMMAT));
-    if(fEMMAT>0 && fTIGts>0) Histogramer::Get()->Fill("EventBuilder","dtns_EMT_TIG",2e3,-1e4,1e4,double(fEMMAT-fTIGts));
-    if(fADCts>0 && fTIGts>0) Histogramer::Get()->Fill("EventBuilder","dtns_ADC_TIG",2e3,-1e4,1e4,double(fADCts-fTIGts),4e3,0,4e3,fE);
+    if(fADCts>0 && fEMMAT>0) Histogramer::Get()->Fill("EventBuilder","dtns_ADC_EMT",2e6,-1e9,1e9,double(fADCts-fEMMAT));
+    if(fEMMAT>0 && fTIGts>0) Histogramer::Get()->Fill("EventBuilder","dtns_EMT_TIG",2e5,-1e8,1e8,double(fEMMAT-fTIGts),250,1000,1500,fE);
+    if(fADCts>0 && fTIGts>0) Histogramer::Get()->Fill("EventBuilder","dtns_ADC_TIG",2e5,-1e8,1e8,double(fADCts-fTIGts),250,1000,1500,fE);
     if(top_ref.get()->Number()<720 && (top_ref.get()->Number())%15==9) {
       if(top_ref.get()->Energy()>=20 && top_ref.get()->Energy()<=4000) {
         fTIGts = top_ref.get()->TimestampNs();

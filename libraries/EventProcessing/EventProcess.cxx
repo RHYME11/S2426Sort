@@ -8,6 +8,7 @@
 
 #include <map>
 #include <iostream>
+#include <algorithm>
 #include "TVector3.h"
 EventProcess *EventProcess::fEventProcess = 0;
 
@@ -147,10 +148,8 @@ void EventProcess::loop() {
 		double fBdelay = 20;
 		double fXlength = 80.; // Size of X focal plane in mm
 		double fYlength = 30.; // Size of Y focal plane in mm
-    std::vector<double> vleft;	
-    std::vector<double> vright;	
-    std::vector<double> vtop;	
-    std::vector<double> vbot;	
+    std::array<double,4> pgac = {-1,-1,-1,-1};
+    std::vector<double> fanode;
 		for(auto it = emmatdc.begin(); it!=emmatdc.end(); ++it){
       auto& current = *it;
       int c     = current->Address()&0xff;
@@ -158,17 +157,19 @@ void EventProcess::loop() {
       long timestamp = current->Timestamp(); 
       long tsns      = current->TimestampNs(); 
       Histogramer::Get()->Fill("Event/EMMA","eTDC_event",4000,0,64000,chg, 1000,0,1000,c);
-			if(c==3) {vright.push_back(chg);}
-			if(c==4) { vleft.push_back(chg);}
-			if(c==5) {  vtop.push_back(chg);}
-			if(c==6) {  vbot.push_back(chg);}
+      if(c==3) {pgac[0]=chg;}
+			if(c==4) {pgac[1]=chg;}
+			if(c==5) {pgac[2]=chg;}
+			if(c==6) {pgac[3]=chg;}
+      if(c<3) fanode.push_back(chg);
     }
-		int vcount = 0;
-    while(vcount<vleft.size() && vcount<vright.size() && vcount<vtop.size() && vcount<vbot.size()){
-      double left   = vleft[vcount];
-      double right  = vright[vcount];
-      double top    = vtop[vcount];
-      double bottom = vbot[vcount];
+    
+    if(std::all_of(pgac.begin(), pgac.end(),[](double x) { return x > 0; }) && fanode.size()>0){
+      double anode = *std::min_element(fanode.begin(), fanode.end());
+      double left   = pgac[0] - anode;
+      double right  = pgac[1] - anode;
+      double top    = pgac[2] - anode;
+      double bottom = pgac[3] - anode;
       double Xdiff = (left+fLdelay) - (right+fRdelay);
 		  double Xsum = (left) + (right);
   	  double Ydiff = (bottom+fBdelay) - (top+fTdelay);
@@ -177,8 +178,7 @@ void EventProcess::loop() {
   	  double Ypos = ( Ydiff / Ysum )*fYlength;
 		  TVector3 pgac(Xpos, Ypos, 1);
 		  Histogramer::Get()->Fill("Event/PGAC","focalplanx_y", 60,-30,30,pgac.X(),60,-30,30,pgac.Y());
-      vcount++;
-		}
+    }
 // ============================================================//
 
 // =================== TIGRES cores ===========================//
@@ -220,26 +220,24 @@ void EventProcess::loop() {
       for(int i=0;i<icst[0].size();i++){
         for(int j=0;j<vec_ts.size();j++){
           Histogramer::Get()->Fill("Event/Good","dtns_ADC_TIG",2e3,-1e4,1e4,double(icst[0][i]-vec_ts[j]),4e3,0,4e3,vec_doppler[j]);
+          if(std::all_of(pgac.begin(), pgac.end(),[](double x) { return x > 0; }) && fanode.size()>0)
+            Histogramer::Get()->Fill("Event/Good","dtns_ADC_TIG_goodpgac",2e3,-1e4,1e4,double(icst[0][i]-vec_ts[j]),4e3,0,4e3,vec_doppler[j]);
         }
       }
       Histogramer::Get()->Fill("Event/Good/Size/","core_size",100,0,100,vec_ts.size());
       Histogramer::Get()->Fill("Event/Good/Size/","IC0_size" ,100,0,100,icst[0].size()); 
-      Histogramer::Get()->Fill("Event/Good/Size/","pgac_left_size"   ,100,0,100,vleft.size()); 
-      Histogramer::Get()->Fill("Event/Good/Size/","pgac_right_size"  ,100,0,100,vright.size()); 
-      Histogramer::Get()->Fill("Event/Good/Size/","pgac_top_size"    ,100,0,100,vtop.size()); 
-      Histogramer::Get()->Fill("Event/Good/Size/","pgac_bottom_size" ,100,0,100,vbot.size()); 
 	    for(int i = 0; i < 4; ++i) {
 	      Histogramer::Get()->Fill("Event/Good/EMMA", Form("ic%d_vs_si",i),  4000, 0, 4000, sic,4000, 0, 4000, ic_sum[i]);
 	    }
       for(int i=0;i<vec_doppler.size();i++){
         if(vec_doppler[i]>1250 && vec_doppler[i]<1300) Histogramer::Get()->Fill("Event/Good/EMMA", "ic1_vs_si_Eg1273",  4000, 0, 4000, sic,4000, 0, 4000, ic_sum[1]);
       } 
-	    vcount = 0;
-      while(vcount<vleft.size() && vcount<vright.size() && vcount<vtop.size() && vcount<vbot.size()){
-        double left   = vleft[vcount];
-        double right  = vright[vcount];
-        double top    = vtop[vcount];
-        double bottom = vbot[vcount];
+      if(std::all_of(pgac.begin(), pgac.end(),[](double x) { return x > 0; }) && fanode.size()>0){
+        double anode = *std::min_element(fanode.begin(), fanode.end());
+        double left   = pgac[0] - anode;
+        double right  = pgac[1] - anode;
+        double top    = pgac[2] - anode;
+        double bottom = pgac[3] - anode;
         double Xdiff = (left+fLdelay) - (right+fRdelay);
 	      double Xsum = (left) + (right);
         double Ydiff = (bottom+fBdelay) - (top+fTdelay);
@@ -251,19 +249,17 @@ void EventProcess::loop() {
         for(int j=0;j<vec_doppler.size();j++){
           Histogramer::Get()->Fill("Event/Good/PGAC","pgacx_doppler_allchn",60,-30,30,pgac.X(),4e3,0,4e3,vec_doppler[j]);
         }
-        vcount++;
-	    }
-	    vcount = 0;
-      while(vcount<vleft.size() && vcount<vright.size()){
-        double left   = vleft[vcount];
-        double right  = vright[vcount];
+      }
+      if(pgac[0]>0 && pgac[1]>0 && fanode.size()>0){
+        double anode = *std::min_element(fanode.begin(), fanode.end());
+        double left   = pgac[0] - anode;
+        double right  = pgac[1] - anode;
         double Xdiff = (left+fLdelay) - (right+fRdelay);
 	      double Xsum = (left) + (right);
         double Xpos = ( Xdiff / Xsum )*fXlength;
         for(int j=0;j<vec_doppler.size();j++){
           Histogramer::Get()->Fill("Event/Good/PGAC","pgacx_doppler",60,-30,30,Xpos,4e3,0,4e3,vec_doppler[j]);
         }
-        vcount++;
 	    }
     } // good event over
 

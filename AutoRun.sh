@@ -6,8 +6,8 @@ set -euo pipefail
 # Configuration
 # -------------------------------
 
-RUNS=($(seq 62179 62187))
-
+#RUNS=($(seq 62179 62187))
+RUNS=(62183)
 DATA_DIR="/data1/yzhu/Projects/S2426/raw_data"
 SORTER="./bin/s2426Sort"
 OUT_DIR="./histOutput"
