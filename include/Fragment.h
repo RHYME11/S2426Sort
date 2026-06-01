@@ -30,7 +30,7 @@ class Fragment {
     void SetFilterPattern(int fp)     { fFilterPattern = fp; }    
     void SetPileup(int pileup)        { fPileup = pileup; }  
     void SetTimestampUnit(int timestampunit) {fTimestampUnit = timestampunit;}
-    void AddCharge(int chg); //           { fCharge.push_back(chg); }
+    void AddCharge(int chg); 
     void AddInt(int i)                { fInt.push_back(i); }
     void SetTheta(); 
 
@@ -38,14 +38,13 @@ class Fragment {
     int  DetType()   const { return fDetType; }
 
     long Timestamp() const { return fTimestamp; }
-    //double Time()    const { return double(fTimestamp&0xfffffffffffc0000) + double(fCfd)/16.; } 
     double Time()    const { return double(fTimestamp&0xfffffffffffc0000)*fTimestampUnit + double(fCfd+gRandom->Uniform())/1.6; } 
     int  Cfd()       const { return fCfd;       }
     int  Filter()    const { return fFilterPattern; }
     int  Pileup()    const { return fPileup;        }
 
-    float Charge()   const; // { return float(fCharge.at(0))/float(fInt.at(0)); }
-    float Energy()   const; // { return float(fCharge.at(0))/float(fInt.at(0)); }
+    float Charge()   const; 
+    float Energy()   const; 
 
     int  Number()    const { return Channel::Get(fAddress)->Number(); } 
     int  DetNumber()    const { std::string name = Channel::Get(fAddress)->Name(); if(name.length()>4) return atoi(name.substr(3,2).c_str()); return 99; }
@@ -56,12 +55,7 @@ class Fragment {
     double Theta() const {return fTheta;}
     double Doppler(double beta);    
 
-    bool operator<(const Fragment& other) const { 
-      //if(timestamp != other.timestamp) 
-        return fTimestamp>other.fTimestamp;
-      //return timestamp;
-      //return seq<other.seq; 
-    }
+    bool operator<(const Fragment& other) const { return TimestampNs()<other.TimestampNs();} // min_timestampNs frag at the top of priority_queue
 
 
   private:
