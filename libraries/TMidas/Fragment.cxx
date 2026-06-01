@@ -7,6 +7,8 @@
 #include <TigressGeometry.h>
 #include <cstdint>
 
+ClassImp(Fragment)
+
 Fragment::Fragment() { } 
 
 Fragment::~Fragment() { } 
@@ -214,6 +216,44 @@ void Fragment::AddCharge(int charge) {
   }
   //printf("eng = %.02f \n", eng); 
   fEnergy.push_back(eng);
+}
+
+// ========== DetNumber() ============= //
+int Fragment::DetNumber() const {
+  std::string name = Channel::Get(fAddress)->Name();
+  if(name.length()>5) return atoi(name.substr(3,2).c_str()); 
+  return 99;
+}
+
+// ========== XtalNumber() ============= //
+int Fragment::XtalNumber() const {
+  std::string name = Channel::Get(fAddress)->Name();
+  if (name.length() <= 5) return -1;                
+  switch (name[5]) {                                
+      case 'B': return 0;                           
+      case 'G': return 1;                           
+      case 'R': return 2;                           
+      case 'W': return 3;                           
+      default:  return -1;                          
+  }
+}
+
+// ========== ArryNumber() ============= //
+int Fragment::ArryNumber() const {
+  std::string name = Channel::Get(fAddress)->Name();
+  int det = 99;
+  int xtal = -1;
+  if (name.length() > 5) {
+    det = std::stoi(name.substr(3,2));
+    switch (name[5]) {
+    case 'B': xtal = 0; break;
+    case 'G': xtal = 1; break;
+    case 'R': xtal = 2; break;
+    case 'W': xtal = 3; break;
+    }
+    return det * 4 + xtal+1;
+  }
+  return 99;
 }
 
 

@@ -6,6 +6,7 @@
 //#include <TObject.h>
 
 #include <Channel.h>
+#include <Rtypes.h>
 #include "TRandom.h"
 
 class Fragment { 
@@ -47,8 +48,9 @@ class Fragment {
     float Energy()   const; 
 
     int  Number()    const { return Channel::Get(fAddress)->Number(); } 
-    int  DetNumber()    const { std::string name = Channel::Get(fAddress)->Name(); if(name.length()>4) return atoi(name.substr(3,2).c_str()); return 99; }
-
+    int  DetNumber() const; // [5,16]
+    int XtalNumber() const; // [0,3]
+    int ArryNumber() const; // [21,64]
     std::string Name() const { return   Channel::Get(fAddress)->Name(); }  
 
     long TimestampNs()  const {return fTimestamp * fTimestampUnit;}
@@ -76,7 +78,8 @@ class Fragment {
     std::vector<float> fCharge;
     std::vector<float> fEnergy;
     double fTheta{-1};
-  //ClassDef(Fragment,1);
+
+  ClassDef(Fragment,1);
 };
 
 

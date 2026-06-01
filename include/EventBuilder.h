@@ -14,9 +14,6 @@ struct CompareFragmentPtrs {
       if(!a.get() && !b.get()) return false;
       if (!a.get()) return true;  
       if (!b.get()) return false; 
-
-      //a.get()->Print();
-      //b.get()->Print();
       return a.get()->TimestampNs() > b.get()->TimestampNs();
     }
 };
@@ -31,9 +28,6 @@ class EventBuilder {
 
     void push(std::unique_ptr<Fragment> frag);
     bool pop(std::vector<std::unique_ptr<Fragment> > &Builtfrags);  
-    //bool push(Fragment *frag);
-    //bool pop(std::vector<Fragment*> &Builtfrags);  
-    //bool peek(Fragment*& out);
 
     void loop(); // monitor the queue and decide when to do useful things.
 
@@ -57,20 +51,12 @@ class EventBuilder {
     std::priority_queue<std::unique_ptr<Fragment>,
                         std::vector<std::unique_ptr<Fragment> >,
                         CompareFragmentPtrs > fQueue;
-    //std::priority_queue<Fragment*,
-    //                    std::vector<Fragment*> > fQueue;
 
     std::atomic<uint32_t> fPushed{0};
     std::atomic<uint32_t> fPopped{0};
 
     std::atomic_bool fStop{false};
     std::thread fWorker;
-// ============= temp ============== //    
-    long fADCts = {-1};
-    long fEMMAT = {-1};
-    long fTIGts;
-    double fE;
-// ================================ //
 };
 
 

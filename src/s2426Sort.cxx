@@ -1,6 +1,9 @@
 
 #include<cstdio>
 #include<chrono>
+#include<map>
+#include<string>
+#include<thread>
 
 #include <TMidasBanks.h>
 #include <TMidasFile.h>
@@ -10,7 +13,7 @@
 #include <EventBuilder.h>
 #include <EventProcess.h>
 
-#include <Histogramer.h>
+#include <OutputManager.h>
 #include <Channel.h>
 
 #include <utils.h>
@@ -22,7 +25,6 @@ void MakeEmmaADC(uint32_t*,int);
 void MakeEmmaTDC(uint32_t*,int);
 
 
-//void doStatus(TMidasFile&,bool forcePrint=false);
 void doStatus(TMidasFile&,bool forcePrint=false,bool drainingQueue=false);
 auto start     = std::chrono::steady_clock::now();
 auto lastPrint = std::chrono::steady_clock::now();
@@ -30,7 +32,6 @@ auto timeEllapsed = std::chrono::duration_cast<std::chrono::seconds>(lastPrint-s
 const std::chrono::seconds interval(1); // 1 second interval
 
 static Long64_t xferhfts;     // Time stamp to be transferred from ADC to TDC; 10 ns ticks
-int gl_counter1, gl_counter2, gl_counter3, gl_counter4;
 
 int main(int argc, char **argv) {
   
@@ -38,15 +39,9 @@ int main(int argc, char **argv) {
   TMidasFile infile(argv[1]);
   TMidasEvent event;
 
-  Histogramer *gHist = Histogramer::Get();
-
   int run,subrun;
   getRunNumber(argv[1],run,subrun);
-  gHist->SetRun(run,subrun);
-
-  ////printf(" sorting \t %s\n",argv[1]);
-  ////printf(" \trun:    %i\n",run);
-  ////printf(" \tsubrun: %i\n",subrun);
+  OutputManager::Get()->Open(run,subrun);
 
   Channel::Read("cal/CalibrationFile_May1526_pol1.cal"); 
 
@@ -67,7 +62,6 @@ int main(int argc, char **argv) {
       case 1:  //trigger
         xferhfts = 0;
         //printf("\n\n--------------------%i--------------------- \n",counter);
-        Histogramer::Fill("EventTrigger",10,0,10,event.GetTriggerMask());
         event.SetBankList();
         //if(event.GetTriggerMask()==0) event.Print("all");
         void *ptr;
@@ -108,46 +102,18 @@ int main(int argc, char **argv) {
     doStatus(infile,true,true);
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
+  while(EventProcess::Get()->Running()) {
+    doStatus(infile,true,true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
   
   doStatus(infile,true,false);
-  gHist->Close();
-  EventProcess::Get()->PrintCounter();
+  OutputManager::Close();
   return 0;  
 }
 
 
 // ======================================================================================= // 
-/*void doStatus(TMidasFile &infile,bool forcePrint) {
-  
-  if((std::chrono::steady_clock::now()-lastPrint) > interval) forcePrint=true;
-  if(!forcePrint) return; 
-  lastPrint = std::chrono::steady_clock::now();
-  timeEllapsed = std::chrono::duration_cast<std::chrono::seconds>(lastPrint-start);
-  printf(CLEAR_LINE);
-  printf(" %lld \t read %.02f / %.02f  MB\r",
-          timeEllapsed.count(),infile.GetBytesRead()/1024./1024.,
-          infile.GetFileSize()/1024./1024.);
-  printf(CURSOR_DOWN);
-  printf(CLEAR_LINE);
-  printf("\t EventBuilder[%s] Q[%i] pushed[%i]  pop[%i]\r",
-           EventBuilder::Get()->Running() ?  "on" : "off",
-           EventBuilder::Get()->Size(),EventBuilder::Get()->Pushed(),EventBuilder::Get()->Popped());
-  printf(CURSOR_DOWN);
-  printf(CLEAR_LINE);
-  printf("\t EventProcess[%s] pushed[%i]\r",
-           EventBuilder::Get()->Running() ?  "on" : "off",
-           EventProcess::Get()->Pushed());
-
-  if(infile.GetBytesRead()>=infile.GetFileSize()) {
-    printf("\ndone!\n");
-  } else {
-    printf(CURSOR_UP);
-    printf(CURSOR_UP);
-  }
-  fflush(stdout);
-  //if(timeEllapsed.count()>20) break;
-}*/
-
 void doStatus(TMidasFile &infile, bool forcePrint, bool drainingQueue) {
 
   if((std::chrono::steady_clock::now()-lastPrint) > interval) forcePrint=true;
@@ -239,40 +205,12 @@ void MakeEmmaADC(uint32_t* pdata,int size) {
           frag.get()->SetDetType(13);
           frag.get()->SetTimestampUnit(50);
           xferhfts = frag.get()->Timestamp();
-          int c     = frag.get()->Address()&0xff;
-          float chg = frag.get()->Charge(); 
-          //Histogramer::Get()->Fill("eADC",4000,0,64000,chg,
-          //                                 1000,0,1000,c);
-          //printf("%s(%i): %lu\n",frag.get()->Name().c_str(),frag.get()->DetType(),frag.get()->TimestampNs());
-          //printf("%s\t"
-          //       "0x%08x\t"
-          //       "%d\t"
-          //       "%d\t"
-          //       "%ld\t"
-          //       "%ld\t"
-          //       "%.16f\t"
-          //       "%f\t"
-          //       "%f\t"
-          //       "%.16f\n",
-          //       frag.get()->Name().c_str(),
-          //       (unsigned int)frag.get()->Address(),
-          //       frag.get()->Number(),
-          //       frag.get()->DetType(),
-          //       frag.get()->Timestamp(),
-          //       frag.get()->TimestampNs(),
-          //       frag.get()->Time(),
-          //       frag.get()->Charge(),
-          //       frag.get()->Energy(),
-          //       frag.get()->Theta()
-          //      );
           EventBuilder::Get()->push(std::move(frag));
         }
         break;   
       default:  
         break;
     }
-    //printf("0x%08x ",*(pdata+i));
-    //if(i && (i%8)==0) printf("\n");
   }
 }
 
@@ -290,12 +228,6 @@ void MakeEmmaTDC(uint32_t* pdata ,int size) {
 
   std::vector<uint32_t> addresses;
   std::vector<uint32_t> charges;
-
-  //for(int i=0;i<size;i++) {
-  //  printf("0x%08x ",*(pdata+i));
-  //  if(i && (i%8)==0) printf("\n");
-  //}
-  //printf("\n\n");
 
 
   for(int x=0;x<size;x++) {  
@@ -356,35 +288,6 @@ void MakeEmmaTDC(uint32_t* pdata ,int size) {
           frag.get()->SetDetType(14);
           frag.get()->SetTimestampUnit(50);
 
-
-           int c     = frag.get()->Address()&0xff;
-           float chg = frag.get()->Charge(); 
-           //Histogramer::Get()->Fill("eTDC",4000,0,64000,chg,
-           //                                1000,0,1000,c);
-
-          //printf("%s(%i): %lu\n",frag.get()->Name().c_str(),frag.get()->DetType(),frag.get()->TimestampNs());
-          //printf("EMMA TDC\n");
-          //printf("%s\t"
-          //       "0x%08x\t"
-          //       "%d\t"
-          //       "%d\t"
-          //       "%ld\t"
-          //       "%ld\t"
-          //       "%.16f\t"
-          //       "%f\t"
-          //       "%f\t"
-          //       "%.16f\n",
-          //       frag.get()->Name().c_str(),
-          //       (unsigned int)frag.get()->Address(),
-          //       frag.get()->Number(),
-          //       frag.get()->DetType(),
-          //       frag.get()->Timestamp(),
-          //       frag.get()->TimestampNs(),
-          //       frag.get()->Time(),
-          //       frag.get()->Charge(),
-          //       frag.get()->Energy(),
-          //       frag.get()->Theta()
-          //      );
           EventBuilder::Get()->push(std::move(frag));
         }
         addresses.clear();
@@ -418,29 +321,7 @@ void MakeTigressFragments(uint32_t *pdata,int size) {
       std::unique_ptr<Fragment> frag = std::make_unique<Fragment>();
       int i=0;
       if(frag.get()->Unpack(pStart,nwords)) {
-        //printf("CH%i: %i\n",frag.get()->Number(),frag.get()->DetType());
         good++;
-        //printf("%s\t"
-        //       "0x%08x\t"
-        //       "%d\t"
-        //       "%d\t"
-        //       "%ld\t"
-        //       "%ld\t"
-        //       "%.16f\t"
-        //       "%f\t"
-        //       "%f\t"
-        //       "%.16f\n",
-        //       frag.get()->Name().c_str(),
-        //       (unsigned int)frag.get()->Address(),
-        //       frag.get()->Number(),
-        //       frag.get()->DetType(),
-        //       frag.get()->Timestamp(),
-        //       frag.get()->TimestampNs(),
-        //       frag.get()->Time(),
-        //       frag.get()->Charge(),
-        //       frag.get()->Energy(),
-        //       frag.get()->Theta()
-        //      );
         EventBuilder::Get()->push(std::move(frag));
 //=========================================================================================================//
       }else{
@@ -451,17 +332,7 @@ void MakeTigressFragments(uint32_t *pdata,int size) {
     }
     words+=1;
   }
-  //printf("found %i frags\n",counter);
-  //printf("\tgood: %i frags\n",good);
-  //printf("\tbad: %i frags\n",bad);
 }
-
-
-
-
-
-
-
 
 
 

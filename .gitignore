@@ -22,4 +22,4 @@ a.out
 *.ods*
 
 .DS_Store
-
+.codex

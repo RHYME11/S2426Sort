@@ -14,10 +14,6 @@ class EventProcess {
     virtual ~EventProcess(); 
     static EventProcess *Get();
 
-    //void push(std::unique_ptr<Fragment> frag);
-    //bool pop(std::vector<Fragment> &Builtfrags);  
-    //bool peek(Fragment*& out);
-
     void loop(); // monitor the queue and decide when to do useful things.
 
     void Stop() { fStop = true; }
@@ -25,7 +21,6 @@ class EventProcess {
     bool     Running() const { return !fStop.load(); }
     uint32_t Pushed() const { return fPushed.load(); }
     uint32_t Popped() const { return fPopped.load(); }
-    void PrintCounter() const;
 
 
   private:
@@ -35,16 +30,12 @@ class EventProcess {
     static EventProcess *fEventProcess;
 
     std::mutex fMutex;
-    //std::priority_queue<std::unique_ptr<Fragment>,std::vector<std::unique_ptr<Fragment> > > fQueue;
 
     std::atomic<uint32_t> fPushed{0};
     std::atomic<uint32_t> fPopped{0};
 
     std::atomic_bool fStop{false};
     std::thread fWorker;
-// =============== temp ============== //
-    long fCounter[100] = {0};
-// ================================== //
 };
 
 

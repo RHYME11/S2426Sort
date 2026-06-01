@@ -10,11 +10,10 @@ root_generate_dictionary(G__TMIDAS
   TMidasFile.h
   TRawEvent.h
   TRawFile.h
-#  Fragment.h
+  Fragment.h
   MODULE TMIDAS LINKDEF LinkDef.h)
 
 target_link_libraries(TMIDAS ROOT::Core ROOT::MathCore CHANNEL)
 
 #link the compiled libraries above to the final executable.
 target_link_libraries(s2426Sort TMIDAS)        
-
