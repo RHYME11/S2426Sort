@@ -101,15 +101,15 @@ int main(int argc, char **argv) {
     };
     typeFound[event.GetEventId()]++;
     counter++;
-    //doStatus(infile);
+    doStatus(infile);
   } 
   EventBuilder::Get()->Stop();
   while(EventBuilder::Get()->Size() > 0) {
-    //doStatus(infile,true,true);
+    doStatus(infile,true,true);
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
   
-  //doStatus(infile,true,false);
+  doStatus(infile,true,false);
   gHist->Close();
   EventProcess::Get()->PrintCounter();
   return 0;  
