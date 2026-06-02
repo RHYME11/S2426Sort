@@ -43,7 +43,7 @@ class Event {
 
     const std::vector<Fragment>& Fragments() const { return fFragments; }
     const Fragment& FragmentAt(size_t index) const { return fFragments.at(index); }
-
+    
     const std::vector<size_t>& Cores() const { return fCores; }
     const std::vector<size_t>& Segments() const { return fSegments; }
     const std::vector<size_t>& Bgos() const { return fBgos; }

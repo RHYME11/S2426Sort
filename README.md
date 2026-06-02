@@ -8,6 +8,7 @@
 - [Event Class Contents](#event-class-contents)
 - [Tigress and TEmma Classes](#tigress-and-temma-classes)
 - [Analysis Conversion](#analysis-conversion)
+- [ROOT Interactive Use](#root-interactive-use)
 - [Output Trees](#output-trees)
 
 ## Event Building Rule
@@ -164,6 +165,15 @@ The output tree is `AnalysisTree` with two branches:
 - `fEmma`: a `TEmma` object built from the input `Event`.
 
 The converter reads the same `Channel` calibration file as `s2426Sort`, because `Fragment::Name()`, `Fragment::Energy()`, and `Fragment::ArryNumber()` use `Channel`.
+
+## ROOT Interactive Use
+
+The `CHANNEL` library builds a ROOT dictionary, so `Channel` can be used from an interactive ROOT session after loading the shared library:
+
+```cpp
+gSystem->Load("build/lib/libCHANNEL.dylib");
+Channel::Read("cal/CalibrationFile_May1526_pol1.cal");
+```
 
 ## Output Trees
 
