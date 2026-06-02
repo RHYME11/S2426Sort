@@ -147,30 +147,29 @@ void Fragment::SetTheta(){
                (color == 'R') ? 2 :
                (color == 'W') ? 3 : -1;
   int  seg   = atoi(name.substr(7,2).c_str());
-  if(seg==0) seg = 8; // sge=0 ==> "00A or 00B", then set seg = 8, got core from TigressGeometry
   double   xx = 0;
   double   yy = 0;
   double   zz = 0;
   switch(xtal){
     case 0:
-      xx = TigressGeometry::GeBluePositionBack[det][seg][0];
-      yy = TigressGeometry::GeBluePositionBack[det][seg][1];
-      zz = TigressGeometry::GeBluePositionBack[det][seg][2]; 
+      xx = TigressGeometry::GeBluePosition[det][seg][0];
+      yy = TigressGeometry::GeBluePosition[det][seg][1];
+      zz = TigressGeometry::GeBluePosition[det][seg][2]; 
       break;
     case 1:
-      xx = TigressGeometry::GeGreenPositionBack[det][seg][0];
-      yy = TigressGeometry::GeGreenPositionBack[det][seg][1];
-      zz = TigressGeometry::GeGreenPositionBack[det][seg][2];
+      xx = TigressGeometry::GeGreenPosition[det][seg][0];
+      yy = TigressGeometry::GeGreenPosition[det][seg][1];
+      zz = TigressGeometry::GeGreenPosition[det][seg][2];
       break;
     case 2:
-      xx = TigressGeometry::GeRedPositionBack[det][seg][0];
-      yy = TigressGeometry::GeRedPositionBack[det][seg][1];
-      zz = TigressGeometry::GeRedPositionBack[det][seg][2];
+      xx = TigressGeometry::GeRedPosition[det][seg][0];
+      yy = TigressGeometry::GeRedPosition[det][seg][1];
+      zz = TigressGeometry::GeRedPosition[det][seg][2];
       break;
     case 3:
-      xx = TigressGeometry::GeWhitePositionBack[det][seg][0];
-      yy = TigressGeometry::GeWhitePositionBack[det][seg][1];
-      zz = TigressGeometry::GeWhitePositionBack[det][seg][2];
+      xx = TigressGeometry::GeWhitePosition[det][seg][0];
+      yy = TigressGeometry::GeWhitePosition[det][seg][1];
+      zz = TigressGeometry::GeWhitePosition[det][seg][2];
       break;
     default:
       return;
@@ -180,7 +179,7 @@ void Fragment::SetTheta(){
   fTheta = det_pos.Theta();
 }
 
-// =========== SetTheta() ================= //
+// =========== Doppler() ================= //
 double Fragment::Doppler(double beta) const{
   if(fTheta<0) return Energy();
   double gamma = 1 / (sqrt(1 - pow(beta, 2)));
@@ -255,6 +254,5 @@ int Fragment::ArryNumber() const {
   }
   return 99;
 }
-
 
 
