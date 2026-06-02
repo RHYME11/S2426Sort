@@ -181,7 +181,7 @@ void Fragment::SetTheta(){
 }
 
 // =========== SetTheta() ================= //
-double Fragment::Doppler(double beta){
+double Fragment::Doppler(double beta) const{
   if(fTheta<0) return Energy();
   double gamma = 1 / (sqrt(1 - pow(beta, 2)));
   double tmp   = Energy() * gamma * (1 - beta * TMath::Cos(fTheta));

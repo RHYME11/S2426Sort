@@ -55,7 +55,7 @@ class Fragment {
 
     long TimestampNs()  const {return fTimestamp * fTimestampUnit;}
     double Theta() const {return fTheta;}
-    double Doppler(double beta);    
+    double Doppler(double beta) const;    
 
     bool operator<(const Fragment& other) const { return TimestampNs()<other.TimestampNs();} // min_timestampNs frag at the top of priority_queue
 
