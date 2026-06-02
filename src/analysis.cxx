@@ -52,7 +52,8 @@ int main(int argc, char **argv) {
   TEmma emma;
 
   Long64_t entries = inputTree->GetEntries();
-  for(Long64_t i = 0; i < entries; ++i) {
+  Long64_t i = 0;
+  for(; i < entries; ++i) {
     inputTree->GetEntry(i);
     if(!event) continue;
 
@@ -60,11 +61,16 @@ int main(int argc, char **argv) {
     emma.Set(*event);
 
     OutputManager::Get()->FillAnalysis(tigress, emma);
+
+    if((i%2000) == 0){
+      printf("run%i_%03i: on entry %lld / %lld\r", run, subrun, static_cast<long long>(i), static_cast<long long>(entries));
+      fflush(stdout);
+    }
   }
 
   OutputManager::Close();
   inputFile->Close();
 
-  printf("Converted %lld entries to Analysis%i_%03i.root\n", entries, run, subrun);
+  printf("run%i_%03i: on entry %lld / %lld\n", run, subrun, static_cast<long long>(i), static_cast<long long>(entries));
   return 0;
 }
