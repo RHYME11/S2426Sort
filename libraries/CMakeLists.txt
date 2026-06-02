@@ -1,11 +1,11 @@
 
-add_subdirectory(TMidas)
-
 add_subdirectory(Channel)
 
-add_subdirectory(Histogramer)
+add_subdirectory(DataModel)
 
-add_subdirectory(Event)
+add_subdirectory(TMidas)
+
+add_subdirectory(Histogramer)
 
 add_subdirectory(OutputManager)
 

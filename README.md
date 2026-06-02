@@ -124,8 +124,7 @@ Important accessors:
 
 ## Tigress and TEmma Classes
 
-`TigressHit`, `Tigress`, and `TEmma` provide detector-level objects built from an existing `Event`.
-They are built into the same `EVENT` shared library and ROOT dictionary as `Event`.
+`Fragment`, `Event`, `TigressHit`, `Tigress`, and `TEmma` are data-model classes. They are built into the same `DATA` shared library and ROOT dictionary.
 
 `TigressHit` stores copied TIGRESS `Fragment` objects that share one `Fragment::ArryNumber()`:
 

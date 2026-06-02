@@ -5,6 +5,7 @@
 #pragma link off all functions;
 #pragma link C++ nestedclasses;
 
+#pragma link C++ class Fragment+;
 #pragma link C++ class Event+;
 #pragma link C++ class TigressHit+;
 #pragma link C++ class Tigress+;

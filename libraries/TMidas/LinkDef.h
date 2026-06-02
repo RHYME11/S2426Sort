@@ -13,6 +13,4 @@
 #pragma link C++ class TRawEvent+;
 #pragma link C++ class TRawFile+;
 
-#pragma link C++ class Fragment+;
-
 #endif
