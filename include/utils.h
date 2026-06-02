@@ -33,15 +33,15 @@ std::vector<std::string> tokenizeString(std::string path,char delimiter='/') {
 }
 
 void getRunNumber(std::string infile,int &run,int &subrun) {
-  std::regex pattern("run([0-9]{5})_([0-9]{3})\\.mid");
+  std::regex pattern("(run|Fragment|event|goodevent|Analysis)([0-9]{5})_([0-9]{3})\\.(mid|root)");
   std::smatch matches;
 
   if (std::regex_search(infile, matches, pattern)) {
-    // We should have 3 matches: the full string, capture group 1, and capture group 2
-    if (matches.size() == 3) {
+    // We should have 5 matches: the full string, prefix, run, subrun, and extension
+    if (matches.size() == 5) {
       // Convert the captured strings to integers
-      run = std::stoi(matches.str(1));    // Group 1: 5-digit number
-      subrun = std::stoi(matches.str(2)); // Group 2: 3-digit number
+      run = std::stoi(matches.str(2));    // Group 2: 5-digit run number
+      subrun = std::stoi(matches.str(3)); // Group 3: 3-digit subrun number
       return; // Success, return from the function
     }  
   }

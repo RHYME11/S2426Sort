@@ -6,6 +6,8 @@
 - [Good Event Tagging](#good-event-tagging)
 - [Fragment Class Contents](#fragment-class-contents)
 - [Event Class Contents](#event-class-contents)
+- [Tigress and TEmma Classes](#tigress-and-temma-classes)
+- [Analysis Conversion](#analysis-conversion)
 - [Output Trees](#output-trees)
 
 ## Event Building Rule
@@ -120,12 +122,57 @@ Important accessors:
 - `Cores()`, `Segments()`, `Bgos()`: access TIGRESS and BGO category indices.
 - `Si()`, `ICs()`, `Anodes()`, `Left()`, `Right()`: access EMMA category indices.
 
+## Tigress and TEmma Classes
+
+`TigressHit`, `Tigress`, and `TEmma` provide detector-level objects built from an existing `Event`.
+They are built into the same `EVENT` shared library and ROOT dictionary as `Event`.
+
+`TigressHit` stores copied TIGRESS `Fragment` objects that share one `Fragment::ArryNumber()`:
+
+- `fCores`: TIGRESS core fragments.
+- `fSegments`: TIGRESS segment fragments.
+- `fBgos`: BGO fragments.
+
+`Tigress` groups all TIGRESS hits in one event. `Tigress::Set(event)` builds a map keyed by `ArryNumber()` and then stores the resulting `TigressHit` objects.
+
+`TEmma` stores copied EMMA fragments:
+
+- `fSi`: EMMA Si fragments.
+- `fICs`: EMMA ion chamber fragments grouped by IC channel.
+- `fAnodes`: EMMA anode fragments.
+- `fLeft`: EMMA PGAC left fragments.
+- `fRight`: EMMA PGAC right fragments.
+
+`TEmma::Set(event)` calculates and stores `fPGACX` from left, right, and anode charges. If multiple left or right fragments exist, the last stored charge is used. If multiple anodes exist, the smallest anode charge is used. `TEmma::PGACX()` returns the stored value, `TEmma::CalculatePGACX()` recalculates it from the stored fragments, and `TEmma::SetPGACX(value)` can be used to override it later.
+
+## Analysis Conversion
+
+`analysis` converts a good-event ROOT file into detector-level analysis objects:
+
+```text
+./bin/analysis goodevent<run>_<subrun>.root
+```
+
+The output file is:
+
+```text
+Analysis<run>_<subrun>.root
+```
+
+The output tree is `AnalysisTree` with two branches:
+
+- `fTigress`: a `Tigress` object built from the input `Event`.
+- `fEmma`: a `TEmma` object built from the input `Event`.
+
+The converter reads the same `Channel` calibration file as `s2426Sort`, because `Fragment::Name()`, `Fragment::Energy()`, and `Fragment::ArryNumber()` use `Channel`.
+
 ## Output Trees
 
 `EventProcess` receives built fragment groups from `EventBuilder`, converts them into `Event` objects, and sends them to `OutputManager`.
 
 The current ROOT outputs are:
 
-- `list<run>_<subrun>.root`: stores every sorted `Fragment` in `listTree`.
+- `Fragment<run>_<subrun>.root`: stores every sorted `Fragment` in `FragmentTree`.
 - `event<run>_<subrun>.root`: stores every built `Event` in `eventTree`.
 - `goodevent<run>_<subrun>.root`: stores only events with `IsGood() == true` in `eventTree`.
+- `Analysis<run>_<subrun>.root`: stores `Tigress` and `TEmma` detector objects in `AnalysisTree`.

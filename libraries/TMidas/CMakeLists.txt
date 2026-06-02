@@ -17,3 +17,4 @@ target_link_libraries(TMIDAS ROOT::Core ROOT::MathCore CHANNEL)
 
 #link the compiled libraries above to the final executable.
 target_link_libraries(s2426Sort TMIDAS)        
+target_link_libraries(analysis TMIDAS)

@@ -6,5 +6,5 @@ target_link_libraries(CHANNEL ${ROOT_LIBRARIES})
 
 #link the compiled libraries above to the final executable.
 target_link_libraries(s2426Sort CHANNEL)        
-
+target_link_libraries(analysis CHANNEL)
 

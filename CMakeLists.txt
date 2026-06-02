@@ -38,11 +38,11 @@ set(CMAKE_CXX_FLAGS ${ROOT_CXX_FLAGS})
 
 #create the executablei, we do it 'first' so the exectuable variable is avail in subdirs
 add_executable(s2426Sort src/s2426Sort.cxx)
+add_executable(analysis src/analysis.cxx)
 
 #setting include paths: TODO, copy headers from library directories(?)
 include_directories(include ${ROOT_INCLUDE_DIRS}) 
 
 #This tells cmake to continue into these directories.
 add_subdirectory(libraries)
-
 
