@@ -1,9 +1,9 @@
-#include <TEmma.h>
+#include <Emma.h>
 
 #include <algorithm>
 #include <cstdio>
 
-ClassImp(TEmma)
+ClassImp(Emma)
 
 namespace {
 
@@ -14,22 +14,22 @@ namespace {
 void PrintFragments(const char* label, const std::vector<Fragment>& fragments) {
   printf("\t%s: %lu\n", label, fragments.size());
   for(const auto& frag : fragments) {
-    printf("\t\t%s energy %.3f charge %.3f time %.3f\n",
-           frag.Name().c_str(), frag.Energy(), frag.Charge(), frag.Time());
+    printf("\t\t%s charge %.3f timestamp: %.3fns\n",
+           frag.Name().c_str(), frag.Charge(), frag.TimestampNs());
   }
 }
 
 }
 
-TEmma::TEmma() { }
+Emma::Emma() { }
 
-TEmma::~TEmma() { }
+Emma::~Emma() { }
 
 // ============== Set ==============
 // purpose: Copy EMMA fragments from an event.
 // inputs: source event
 // outputs: none
-void TEmma::Set(const Event& event) {
+void Emma::Set(const Event& event) {
   Clear();
 
   for(size_t index : event.Si()) {
@@ -55,6 +55,14 @@ void TEmma::Set(const Event& event) {
     fRight.push_back(event.FragmentAt(index));
   }
 
+  for(size_t index : event.PGACTop()) {
+    fPGACTop.push_back(event.FragmentAt(index));
+  }
+
+  for(size_t index : event.PGACBot()) {
+    fPGACBot.push_back(event.FragmentAt(index));
+  }
+
   SetPGACX(CalculatePGACX());
 }
 
@@ -62,12 +70,14 @@ void TEmma::Set(const Event& event) {
 // purpose: Clear stored EMMA fragments.
 // inputs: none
 // outputs: none
-void TEmma::Clear() {
+void Emma::Clear() {
   fSi.clear();
   fICs.clear();
   fAnodes.clear();
   fLeft.clear();
   fRight.clear();
+  fPGACTop.clear();
+  fPGACBot.clear();
   fPGACX = -1;
 }
 
@@ -75,8 +85,8 @@ void TEmma::Clear() {
 // purpose: Print an EMMA summary and PGAC X position.
 // inputs: none
 // outputs: none
-void TEmma::Print() const {
-  printf("TEmma summary\n");
+void Emma::Print() const {
+  printf("Emma summary\n");
   PrintFragments("si", fSi);
 
   printf("\tic groups: %lu\n", fICs.size());
@@ -88,6 +98,8 @@ void TEmma::Print() const {
   PrintFragments("anodes", fAnodes);
   PrintFragments("left", fLeft);
   PrintFragments("right", fRight);
+  PrintFragments("pgac top", fPGACTop);
+  PrintFragments("pgac bot", fPGACBot);
   printf("\tPGACX: %.3f\n", PGACX());
 }
 
@@ -95,7 +107,7 @@ void TEmma::Print() const {
 // purpose: Calculate PGAC X position from left, right, and anode charges.
 // inputs: none
 // outputs: PGAC X position, or -1 when inputs are incomplete
-double TEmma::CalculatePGACX() const {
+double Emma::CalculatePGACX() const {
   const double fLdelay = 40;
   const double fRdelay = 20;
   const double fXlength = 80.;

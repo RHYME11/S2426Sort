@@ -52,6 +52,10 @@ void Event::Set(const std::vector<Fragment>& fragments) {
           fLeft.push_back(i);
         } else if(c == 4) {
           fRight.push_back(i);
+        } else if(c == 5) {
+          fPGACTop.push_back(i);
+        } else if(c == 6) {
+          fPGACBot.push_back(i);
         }
         break;
       default:
@@ -83,6 +87,8 @@ Event Event::Copy(const Event& event) {
   copy.fAnodes = event.fAnodes;
   copy.fLeft = event.fLeft;
   copy.fRight = event.fRight;
+  copy.fPGACTop = event.fPGACTop;
+  copy.fPGACBot = event.fPGACBot;
   copy.fGood = event.fGood;
 
   return copy;
@@ -104,6 +110,8 @@ void Event::Print() const {
   printf("\tanodes:    %lu\n", fAnodes.size());
   printf("\tleft:      %lu\n", fLeft.size());
   printf("\tright:     %lu\n", fRight.size());
+  printf("\tpgac top:  %lu\n", fPGACTop.size());
+  printf("\tpgac bot:  %lu\n", fPGACBot.size());
 }
 
 // ============== Clear ==============
@@ -123,6 +131,8 @@ void Event::Clear() {
   fAnodes.clear();
   fLeft.clear();
   fRight.clear();
+  fPGACTop.clear();
+  fPGACBot.clear();
 
   fGood = false;
 }

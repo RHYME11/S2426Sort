@@ -5,14 +5,14 @@ add_library(DATA SHARED
   ../Event/Event.cxx
   ../Event/TigressHit.cxx
   ../Event/Tigress.cxx
-  ../Event/TEmma.cxx)
+  ../Event/Emma.cxx)
 
 root_generate_dictionary(G__Data
   Fragment.h
   Event.h
   TigressHit.h
   Tigress.h
-  TEmma.h
+  Emma.h
   MODULE DATA
   LINKDEF LinkDef.h)
 

@@ -70,7 +70,8 @@ void OutputManager::OpenAnalysis(int run, int subrun) {
   fAnalysisFile = new TFile(fAnalysisFilename.c_str(), "recreate");
   fAnalysisTree = new TTree("AnalysisTree", "AnalysisTree");
   fAnalysisTree->Branch("fTigress", "Tigress", &fTigressBranch, 32000, 0);
-  fAnalysisTree->Branch("fEmma", "TEmma", &fEmmaBranch, 32000, 0);
+  fAnalysisTree->Branch("fEmma", "Emma", &fEmmaBranch, 32000, 0);
+  fAnalysisTree->Branch("fEvent", "Event", &fAnalysisEventBranch, 32000, 0);
 }
 
 // ============== Close ==============
@@ -115,12 +116,13 @@ void OutputManager::FillGoodEvent(const Event& event) {
 
 // ============== FillAnalysis ==============
 // purpose: Fill one analysis event into analysis tree.
-// inputs: TIGRESS and EMMA detector objects
+// inputs: TIGRESS object, EMMA object, and remaining event fragments
 // outputs: none
-void OutputManager::FillAnalysis(const Tigress& tigress, const TEmma& emma) {
+void OutputManager::FillAnalysis(const Tigress& tigress, const Emma& emma, const Event& event) {
   if(!fAnalysisTree) return;
   fTigress = tigress;
   fEmma = emma;
+  fAnalysisEvent = event;
   fAnalysisTree->Fill();
 }
 

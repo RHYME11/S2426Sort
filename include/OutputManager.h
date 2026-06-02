@@ -3,9 +3,9 @@
 
 #include <string>
 
+#include <Emma.h>
 #include <Event.h>
 #include <Fragment.h>
-#include <TEmma.h>
 #include <Tigress.h>
 
 enum class OutputMode {
@@ -57,9 +57,9 @@ class OutputManager {
 
     // ============== FillAnalysis ==============
     // purpose: Fill one analysis event into analysis tree.
-    // inputs: TIGRESS and EMMA detector objects
+    // inputs: TIGRESS object, EMMA object, and remaining event fragments
     // outputs: none
-    void FillAnalysis(const Tigress& tigress, const TEmma& emma);
+    void FillAnalysis(const Tigress& tigress, const Emma& emma, const Event& event);
 
   private:
     void OpenSort(int run, int subrun);
@@ -84,14 +84,16 @@ class OutputManager {
     Fragment fFragment;
     Event fEvent;
     Event fGoodEvent;
+    Event fAnalysisEvent;
     Tigress fTigress;
-    TEmma fEmma;
+    Emma fEmma;
 
     Fragment *fFragmentBranch{&fFragment};
     Event *fEventBranch{&fEvent};
     Event *fGoodEventBranch{&fGoodEvent};
+    Event *fAnalysisEventBranch{&fAnalysisEvent};
     Tigress *fTigressBranch{&fTigress};
-    TEmma *fEmmaBranch{&fEmma};
+    Emma *fEmmaBranch{&fEmma};
 };
 
 #endif

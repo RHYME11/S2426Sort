@@ -1,17 +1,57 @@
 #include <cstdio>
+#include <vector>
 
 #include <TFile.h>
 #include <TTree.h>
 
 #include <Channel.h>
+#include <Emma.h>
 #include <Event.h>
 #include <OutputManager.h>
-#include <TEmma.h>
 #include <Tigress.h>
 #include <utils.h>
 
+// ============== MarkUsedFragments ==============
+// purpose: Mark fragment indices that were copied into detector-level objects.
+// inputs: used-flag vector and fragment indices
+// outputs: none
+void MarkUsedFragments(std::vector<bool>& used, const std::vector<size_t>& indices) {
+  for(size_t index : indices) {
+    if(index < used.size()) used[index] = true;
+  }
+}
+
+// ============== MakeRemainingEvent ==============
+// purpose: Build an Event from non-detector fragments, excluding dummy channels.
+// inputs: source good event
+// outputs: event containing remaining non-dummy fragments
+Event MakeRemainingEvent(const Event& event) {
+  std::vector<bool> used(event.Size(), false);
+  MarkUsedFragments(used, event.Cores());
+  MarkUsedFragments(used, event.Segments());
+  MarkUsedFragments(used, event.Bgos());
+  MarkUsedFragments(used, event.Si());
+  MarkUsedFragments(used, event.Anodes());
+  MarkUsedFragments(used, event.Left());
+  MarkUsedFragments(used, event.Right());
+  MarkUsedFragments(used, event.PGACTop());
+  MarkUsedFragments(used, event.PGACBot());
+
+  for(const auto& group : event.ICs()) {
+    MarkUsedFragments(used, group.second);
+  }
+
+  std::vector<Fragment> fragments;
+  for(size_t i = 0; i < event.Size(); ++i) {
+    const Fragment& frag = event.FragmentAt(i);
+    if(!used[i] && frag.Name() != "dummy") fragments.push_back(frag);
+  }
+
+  return Event(fragments);
+}
+
 // ============== main ==============
-// purpose: Convert good-event Event entries into TIGRESS and EMMA analysis objects.
+// purpose: Convert good-event Event entries into TIGRESS, EMMA, and remaining analysis objects.
 // inputs: good-event ROOT file path
 // outputs: Analysis ROOT file
 int main(int argc, char **argv) {
@@ -49,7 +89,8 @@ int main(int argc, char **argv) {
   OutputManager::Get()->Open(run, subrun, OutputMode::Analysis);
 
   Tigress tigress;
-  TEmma emma;
+  Emma emma;
+  Event remaining;
 
   Long64_t entries = inputTree->GetEntries();
   Long64_t i = 0;
@@ -59,8 +100,9 @@ int main(int argc, char **argv) {
 
     tigress.Set(*event);
     emma.Set(*event);
+    remaining = MakeRemainingEvent(*event);
 
-    OutputManager::Get()->FillAnalysis(tigress, emma);
+    OutputManager::Get()->FillAnalysis(tigress, emma, remaining);
 
     if((i%2000) == 0){
       printf("run%i_%03i: on entry %lld / %lld\r", run, subrun, static_cast<long long>(i), static_cast<long long>(entries));

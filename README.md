@@ -6,7 +6,7 @@
 - [Good Event Tagging](#good-event-tagging)
 - [Fragment Class Contents](#fragment-class-contents)
 - [Event Class Contents](#event-class-contents)
-- [Tigress and TEmma Classes](#tigress-and-temma-classes)
+- [Tigress and Emma Classes](#tigress-and-emma-classes)
 - [Analysis Conversion](#analysis-conversion)
 - [ROOT Interactive Use](#root-interactive-use)
 - [Output Trees](#output-trees)
@@ -102,6 +102,8 @@ Main stored fields:
 - `fAnodes`: indices of EMMA anode fragments.
 - `fLeft`: indices of EMMA PGAC left fragments.
 - `fRight`: indices of EMMA PGAC right fragments.
+- `fPGACTop`: indices of EMMA PGAC top fragments.
+- `fPGACBot`: indices of EMMA PGAC bottom fragments.
 - `fGood`: good-event flag.
 
 Detector-category mapping is currently based on `Fragment::DetType()` and the low byte of `Fragment::Address()`:
@@ -114,6 +116,8 @@ Detector-category mapping is currently based on `Fragment::DetType()` and the lo
 - `DetType() == 14` and channels `0` to `2`: EMMA anodes.
 - `DetType() == 14` and channel `3`: EMMA PGAC left.
 - `DetType() == 14` and channel `4`: EMMA PGAC right.
+- `DetType() == 14` and channel `5`: EMMA PGAC top.
+- `DetType() == 14` and channel `6`: EMMA PGAC bottom.
 
 Important accessors:
 
@@ -121,11 +125,11 @@ Important accessors:
 - `Size()`: returns the number of fragments.
 - `Fragments()` and `FragmentAt(index)`: access stored fragments.
 - `Cores()`, `Segments()`, `Bgos()`: access TIGRESS and BGO category indices.
-- `Si()`, `ICs()`, `Anodes()`, `Left()`, `Right()`: access EMMA category indices.
+- `Si()`, `ICs()`, `Anodes()`, `Left()`, `Right()`, `PGACTop()`, `PGACBot()`: access EMMA category indices.
 
-## Tigress and TEmma Classes
+## Tigress and Emma Classes
 
-`Fragment`, `Event`, `TigressHit`, `Tigress`, and `TEmma` are data-model classes. They are built into the same `DATA` shared library and ROOT dictionary.
+`Fragment`, `Event`, `TigressHit`, `Tigress`, and `Emma` are data-model classes. They are built into the same `DATA` shared library and ROOT dictionary.
 
 `TigressHit` stores copied TIGRESS `Fragment` objects that share one `Fragment::ArryNumber()`:
 
@@ -135,15 +139,17 @@ Important accessors:
 
 `Tigress` groups all TIGRESS hits in one event. `Tigress::Set(event)` builds a map keyed by `ArryNumber()` and then stores the resulting `TigressHit` objects.
 
-`TEmma` stores copied EMMA fragments:
+`Emma` stores copied EMMA fragments:
 
 - `fSi`: EMMA Si fragments.
 - `fICs`: EMMA ion chamber fragments grouped by IC channel.
 - `fAnodes`: EMMA anode fragments.
 - `fLeft`: EMMA PGAC left fragments.
 - `fRight`: EMMA PGAC right fragments.
+- `fPGACTop`: EMMA PGAC top fragments.
+- `fPGACBot`: EMMA PGAC bottom fragments.
 
-`TEmma::Set(event)` calculates and stores `fPGACX` from left, right, and anode charges. If multiple left or right fragments exist, the last stored charge is used. If multiple anodes exist, the smallest anode charge is used. `TEmma::PGACX()` returns the stored value, `TEmma::CalculatePGACX()` recalculates it from the stored fragments, and `TEmma::SetPGACX(value)` can be used to override it later.
+`Emma::Set(event)` calculates and stores `fPGACX` from left, right, and anode charges. If multiple left or right fragments exist, the last stored charge is used. If multiple anodes exist, the smallest anode charge is used. `Emma::PGACX()` returns the stored value, `Emma::CalculatePGACX()` recalculates it from the stored fragments, and `Emma::SetPGACX(value)` can be used to override it later.
 
 ## Analysis Conversion
 
@@ -159,10 +165,11 @@ The output file is:
 Analysis<run>_<subrun>.root
 ```
 
-The output tree is `AnalysisTree` with two branches:
+The output tree is `AnalysisTree` with three branches:
 
 - `fTigress`: a `Tigress` object built from the input `Event`.
-- `fEmma`: a `TEmma` object built from the input `Event`.
+- `fEmma`: an `Emma` object built from the input `Event`.
+- `fEvent`: an `Event` object containing input fragments that were not copied into `Tigress` or `Emma`, excluding fragments whose `Name()` is `dummy`.
 
 The converter reads the same `Channel` calibration file as `s2426Sort`, because `Fragment::Name()`, `Fragment::Energy()`, and `Fragment::ArryNumber()` use `Channel`.
 
@@ -184,4 +191,4 @@ The current ROOT outputs are:
 - `Fragment<run>_<subrun>.root`: stores every sorted `Fragment` in `FragmentTree`.
 - `event<run>_<subrun>.root`: stores every built `Event` in `eventTree`.
 - `goodevent<run>_<subrun>.root`: stores only events with `IsGood() == true` in `eventTree`.
-- `Analysis<run>_<subrun>.root`: stores `Tigress` and `TEmma` detector objects in `AnalysisTree`.
+- `Analysis<run>_<subrun>.root`: stores `Tigress`, `Emma`, and remaining-fragment `Event` objects in `AnalysisTree`.

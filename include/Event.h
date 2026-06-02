@@ -53,6 +53,8 @@ class Event {
     const std::vector<size_t>& Anodes() const { return fAnodes; }
     const std::vector<size_t>& Left() const { return fLeft; }
     const std::vector<size_t>& Right() const { return fRight; }
+    const std::vector<size_t>& PGACTop() const { return fPGACTop; }
+    const std::vector<size_t>& PGACBot() const { return fPGACBot; }
 
   private:
     std::vector<Fragment> fFragments;
@@ -67,10 +69,12 @@ class Event {
     std::vector<size_t> fAnodes;
     std::vector<size_t> fLeft;
     std::vector<size_t> fRight;
+    std::vector<size_t> fPGACTop;
+    std::vector<size_t> fPGACBot;
 
     bool fGood{false};
 
-  ClassDef(Event,1);
+  ClassDef(Event,2);
 };
 
 #endif

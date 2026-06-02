@@ -13,7 +13,7 @@ namespace {
 void PrintFragments(const char* label, const std::vector<Fragment>& fragments) {
   printf("\t%s: %lu\n", label, fragments.size());
   for(const auto& frag : fragments) {
-    printf("\t\t%s energy %.3f charge %.3f time %.3f\n",
+    printf("\t\t%s energy: %.3f charge: %.3f time: %.3fns\n",
            frag.Name().c_str(), frag.Energy(), frag.Charge(), frag.Time());
   }
 }

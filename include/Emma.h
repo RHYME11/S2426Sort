@@ -1,5 +1,5 @@
-#ifndef __TEMMA_H__
-#define __TEMMA_H__
+#ifndef __EMMA_H__
+#define __EMMA_H__
 
 #include <map>
 #include <vector>
@@ -8,10 +8,10 @@
 #include <Fragment.h>
 #include <Rtypes.h>
 
-class TEmma {
+class Emma {
   public:
-    TEmma();
-    virtual ~TEmma();
+    Emma();
+    virtual ~Emma();
 
     // ============== Set ==============
     // purpose: Copy EMMA fragments from an event.
@@ -50,6 +50,8 @@ class TEmma {
     const std::vector<Fragment>& Anodes() const { return fAnodes; }
     const std::vector<Fragment>& Left() const { return fLeft; }
     const std::vector<Fragment>& Right() const { return fRight; }
+    const std::vector<Fragment>& PGACTop() const { return fPGACTop; }
+    const std::vector<Fragment>& PGACBot() const { return fPGACBot; }
 
   private:
     std::vector<Fragment> fSi;
@@ -57,9 +59,11 @@ class TEmma {
     std::vector<Fragment> fAnodes;
     std::vector<Fragment> fLeft;
     std::vector<Fragment> fRight;
+    std::vector<Fragment> fPGACTop;
+    std::vector<Fragment> fPGACBot;
     double fPGACX{-1};
 
-  ClassDef(TEmma, 1);
+  ClassDef(Emma, 2);
 };
 
 #endif
