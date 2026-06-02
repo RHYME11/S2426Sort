@@ -34,8 +34,8 @@ Event MakeRemainingEvent(const Event& event) {
   MarkUsedFragments(used, event.Anodes());
   MarkUsedFragments(used, event.Left());
   MarkUsedFragments(used, event.Right());
-  MarkUsedFragments(used, event.PGACTop());
-  MarkUsedFragments(used, event.PGACBot());
+  MarkUsedFragments(used, event.Top());
+  MarkUsedFragments(used, event.Bot());
 
   for(const auto& group : event.ICs()) {
     MarkUsedFragments(used, group.second);

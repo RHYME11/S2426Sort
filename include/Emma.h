@@ -50,8 +50,8 @@ class Emma {
     const std::vector<Fragment>& Anodes() const { return fAnodes; }
     const std::vector<Fragment>& Left() const { return fLeft; }
     const std::vector<Fragment>& Right() const { return fRight; }
-    const std::vector<Fragment>& PGACTop() const { return fPGACTop; }
-    const std::vector<Fragment>& PGACBot() const { return fPGACBot; }
+    const std::vector<Fragment>& Top() const { return fTop; }
+    const std::vector<Fragment>& Bot() const { return fBot; }
 
   private:
     std::vector<Fragment> fSi;
@@ -59,8 +59,8 @@ class Emma {
     std::vector<Fragment> fAnodes;
     std::vector<Fragment> fLeft;
     std::vector<Fragment> fRight;
-    std::vector<Fragment> fPGACTop;
-    std::vector<Fragment> fPGACBot;
+    std::vector<Fragment> fTop;
+    std::vector<Fragment> fBot;
     double fPGACX{-1};
 
   ClassDef(Emma, 2);

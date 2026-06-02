@@ -102,8 +102,8 @@ Main stored fields:
 - `fAnodes`: indices of EMMA anode fragments.
 - `fLeft`: indices of EMMA PGAC left fragments.
 - `fRight`: indices of EMMA PGAC right fragments.
-- `fPGACTop`: indices of EMMA PGAC top fragments.
-- `fPGACBot`: indices of EMMA PGAC bottom fragments.
+- `fTop`: indices of EMMA PGAC top fragments.
+- `fBot`: indices of EMMA PGAC bottom fragments.
 - `fGood`: good-event flag.
 
 Detector-category mapping is currently based on `Fragment::DetType()` and the low byte of `Fragment::Address()`:
@@ -125,7 +125,7 @@ Important accessors:
 - `Size()`: returns the number of fragments.
 - `Fragments()` and `FragmentAt(index)`: access stored fragments.
 - `Cores()`, `Segments()`, `Bgos()`: access TIGRESS and BGO category indices.
-- `Si()`, `ICs()`, `Anodes()`, `Left()`, `Right()`, `PGACTop()`, `PGACBot()`: access EMMA category indices.
+- `Si()`, `ICs()`, `Anodes()`, `Left()`, `Right()`, `Top()`, `Bot()`: access EMMA category indices.
 
 ## Tigress and Emma Classes
 
@@ -146,8 +146,8 @@ Important accessors:
 - `fAnodes`: EMMA anode fragments.
 - `fLeft`: EMMA PGAC left fragments.
 - `fRight`: EMMA PGAC right fragments.
-- `fPGACTop`: EMMA PGAC top fragments.
-- `fPGACBot`: EMMA PGAC bottom fragments.
+- `fTop`: EMMA PGAC top fragments.
+- `fBot`: EMMA PGAC bottom fragments.
 
 `Emma::Set(event)` calculates and stores `fPGACX` from left, right, and anode charges. If multiple left or right fragments exist, the last stored charge is used. If multiple anodes exist, the smallest anode charge is used. `Emma::PGACX()` returns the stored value, `Emma::CalculatePGACX()` recalculates it from the stored fragments, and `Emma::SetPGACX(value)` can be used to override it later.
 

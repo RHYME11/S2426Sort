@@ -14,7 +14,7 @@ namespace {
 void PrintFragments(const char* label, const std::vector<Fragment>& fragments) {
   printf("\t%s: %lu\n", label, fragments.size());
   for(const auto& frag : fragments) {
-    printf("\t\t%s charge %.3f timestamp: %.3fns\n",
+    printf("\t\t%s charge %.3f timestamp: %ldns\n",
            frag.Name().c_str(), frag.Charge(), frag.TimestampNs());
   }
 }
@@ -55,12 +55,12 @@ void Emma::Set(const Event& event) {
     fRight.push_back(event.FragmentAt(index));
   }
 
-  for(size_t index : event.PGACTop()) {
-    fPGACTop.push_back(event.FragmentAt(index));
+  for(size_t index : event.Top()) {
+    fTop.push_back(event.FragmentAt(index));
   }
 
-  for(size_t index : event.PGACBot()) {
-    fPGACBot.push_back(event.FragmentAt(index));
+  for(size_t index : event.Bot()) {
+    fBot.push_back(event.FragmentAt(index));
   }
 
   SetPGACX(CalculatePGACX());
@@ -76,8 +76,8 @@ void Emma::Clear() {
   fAnodes.clear();
   fLeft.clear();
   fRight.clear();
-  fPGACTop.clear();
-  fPGACBot.clear();
+  fTop.clear();
+  fBot.clear();
   fPGACX = -1;
 }
 
@@ -98,8 +98,8 @@ void Emma::Print() const {
   PrintFragments("anodes", fAnodes);
   PrintFragments("left", fLeft);
   PrintFragments("right", fRight);
-  PrintFragments("pgac top", fPGACTop);
-  PrintFragments("pgac bot", fPGACBot);
+  PrintFragments("top", fTop);
+  PrintFragments("bot", fBot);
   printf("\tPGACX: %.3f\n", PGACX());
 }
 

@@ -20,6 +20,7 @@ a.out
 *.c
 *.bak
 *.ods*
+AutoRun.sh
 
 .DS_Store
 .codex
