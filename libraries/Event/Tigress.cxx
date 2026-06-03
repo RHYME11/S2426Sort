@@ -40,6 +40,7 @@ void Tigress::Set(const Event& event) {
   }
 
   for(const auto& hit : hitsByArray) {
+    hit.second.SetBGOFired();
     fHits.push_back(hit.second);
   }
 }

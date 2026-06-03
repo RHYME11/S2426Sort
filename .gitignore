@@ -20,6 +20,8 @@ a.out
 *.c
 *.bak
 *.ods*
+*.mid
+*.odb
 AutoRun.sh
 
 .DS_Store

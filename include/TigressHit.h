@@ -33,9 +33,13 @@ class TigressHit {
     const std::vector<Fragment>& Cores() const { return fCores; }
     const std::vector<Fragment>& Segments() const { return fSegments; }
     const std::vector<Fragment>& Bgos() const { return fBgos; }
+  
+    void SetBGOFired();
+    bool BGOFired() {return fBGOFired;}
 
   private:
     int fArryNumber{-1};
+    bool fBGOFired{false};
     std::vector<Fragment> fCores;
     std::vector<Fragment> fSegments;
     std::vector<Fragment> fBgos;

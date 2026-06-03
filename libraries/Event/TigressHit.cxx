@@ -1,5 +1,5 @@
 #include <TigressHit.h>
-
+#include <global_vals.h>
 #include <cstdio>
 
 ClassImp(TigressHit)
@@ -30,6 +30,7 @@ TigressHit::~TigressHit() { }
 // outputs: none
 void TigressHit::Clear() {
   fArryNumber = -1;
+  fBGOFired = false;
   fCores.clear();
   fSegments.clear();
   fBgos.clear();
@@ -45,3 +46,20 @@ void TigressHit::Print() const {
   PrintFragments("segments", fSegments);
   PrintFragments("bgo", fBgos);
 }
+
+// ============== SetBGOFired() ==============
+// purpose:
+// inputs: 
+// outputs: 
+void TigressHit::SetBGOFired() {
+  for(auto bgo:fBgos){
+    double tdif = fCores[0].Time() - bgo.Time();
+    double bgoE = bgo.Energy();
+    if(tdif>=BGOFiredWindow[0] && tdif<=BGOFiredWindow[1] && bgoE>BGOFiredEnergy){
+      fBGOFired = true;
+      return;
+    }
+  }
+  return;
+}
+
