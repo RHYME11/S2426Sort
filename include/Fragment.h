@@ -86,7 +86,7 @@ class Fragment {
         fTime = double(fTimestamp & 0xfffffffffffc0000) * fTimestampUnit + double(fCfd + gRandom->Uniform()) / 1.6;
       }
       if(fTimestamp>=0 && fCfd==0 && fTimestampUnit>=0 && fDetType>=13 && fDetType<=14){ // EMMA fragments
-        fTime = double(fTimestamp gRandom->Uniform()) * fTimestampUnit;
+        fTime = double(fTimestamp+gRandom->Uniform()) * fTimestampUnit;
       }
       return;
     }

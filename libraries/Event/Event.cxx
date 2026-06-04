@@ -20,8 +20,6 @@ void Event::Set(const std::vector<Fragment>& fragments) {
   Clear();
   fFragments = fragments;
 
-  bool hasIC = false;
-
   for(size_t i = 0; i < fFragments.size(); ++i) {
     const Fragment& frag = fFragments.at(i);
     int c = frag.Address() & 0xff;
@@ -42,7 +40,6 @@ void Event::Set(const std::vector<Fragment>& fragments) {
           fSi.push_back(i);
         } else if(c >= 16 && c <= 19) {
           fICs[c - 16].push_back(i);
-          hasIC = true;
         }
         break;
       case 14:
@@ -64,11 +61,8 @@ void Event::Set(const std::vector<Fragment>& fragments) {
   }
 
   fGood = !fCores.empty()
-       && !fSi.empty()
-       && !fLeft.empty()
-       && !fRight.empty()
        && !fAnodes.empty()
-       && hasIC;
+       && (!fLeft.empty() || !fRight.empty());
 }
 
 // ============== Copy ==============

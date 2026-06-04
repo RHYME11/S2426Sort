@@ -1,6 +1,7 @@
 #ifndef __EMMA_H__
 #define __EMMA_H__
 
+#include <limits>
 #include <map>
 #include <vector>
 
@@ -34,13 +35,13 @@ class Emma {
     // ============== PGACX ==============
     // purpose: Return stored PGAC X position.
     // inputs: none
-    // outputs: PGAC X position, or -1 when inputs are incomplete
+    // outputs: PGAC X position, or NaN when inputs are incomplete
     double PGACX() const { return fPGACX; }
 
     // ============== CalculatePGACX ==============
     // purpose: Calculate PGAC X position from stored left, right, and anode charges.
     // inputs: none
-    // outputs: PGAC X position, or -1 when inputs are incomplete
+    // outputs: PGAC X position, or NaN when inputs are incomplete
     double CalculatePGACX() const;
     
     void SetPGACX(double val) { fPGACX = val; }
@@ -61,7 +62,7 @@ class Emma {
     std::vector<Fragment> fRight;
     std::vector<Fragment> fTop;
     std::vector<Fragment> fBot;
-    double fPGACX{-1};
+    double fPGACX{std::numeric_limits<double>::quiet_NaN()};
 
   ClassDef(Emma, 2);
 };

@@ -40,21 +40,15 @@ Every built event is stored in the normal event tree. The `Event` class also mar
 An event is currently tagged as good only when it contains all of the following detector categories:
 
 - At least one TIGRESS core fragment.
-- At least one EMMA Si fragment.
-- At least one EMMA PGAC left fragment.
-- At least one EMMA PGAC right fragment.
 - At least one EMMA anode fragment.
-- At least one EMMA ion chamber fragment.
+- At least one EMMA PGAC left or right fragment.
 
 In code, the good-event flag is set by `Event::Set()` as:
 
 ```cpp
 fGood = !fCores.empty()
-     && !fSi.empty()
-     && !fLeft.empty()
-     && !fRight.empty()
      && !fAnodes.empty()
-     && hasIC;
+     && (!fLeft.empty() || !fRight.empty());
 ```
 
 Only events with `IsGood() == true` are written to the good-event output tree.
@@ -158,7 +152,7 @@ Important accessors:
 - `fTop`: EMMA PGAC top fragments.
 - `fBot`: EMMA PGAC bottom fragments.
 
-`Emma::Set(event)` calculates and stores `fPGACX` from left, right, and anode charges. If multiple left or right fragments exist, the last stored charge is used. If multiple anodes exist, the smallest anode charge is used. `Emma::PGACX()` returns the stored value, `Emma::CalculatePGACX()` recalculates it from the stored fragments, and `Emma::SetPGACX(value)` can be used to override it later.
+`Emma::Set(event)` calculates and stores `fPGACX` from left, right, and anode charges. At least one left or right fragment and at least one anode fragment are required. If the left side is missing, the left corrected charge is set to 0. If the right side is missing, the right corrected charge is set to 0. If multiple left or right fragments exist, the last stored charge is used. If multiple anodes exist, the smallest anode charge is used. `Emma::PGACX()` returns the stored value, `Emma::CalculatePGACX()` recalculates it from the stored fragments, and `Emma::SetPGACX(value)` can be used to override it later.
 
 ## Analysis Conversion
 

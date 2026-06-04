@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <limits>
 
 ClassImp(Emma)
 
@@ -78,7 +79,7 @@ void Emma::Clear() {
   fRight.clear();
   fTop.clear();
   fBot.clear();
-  fPGACX = -1;
+  fPGACX = std::numeric_limits<double>::quiet_NaN();
 }
 
 // ============== Print ==============
@@ -106,17 +107,24 @@ void Emma::Print() const {
 // ============== CalculatePGACX ==============
 // purpose: Calculate PGAC X position from left, right, and anode charges.
 // inputs: none
-// outputs: PGAC X position, or -1 when inputs are incomplete
+// outputs: PGAC X position, or NaN when inputs are incomplete
 double Emma::CalculatePGACX() const {
   const double fLdelay = 40;
   const double fRdelay = 20;
   const double fXlength = 80.;
+  const double invalid = std::numeric_limits<double>::quiet_NaN();
 
-  if(fLeft.empty() || fRight.empty() || fAnodes.empty()) return -1;
+  if((fLeft.empty() && fRight.empty()) || fAnodes.empty()) return invalid;
 
-  double left = -1;
-  double right = -1;
+  double left = 0;
+  double right = 0;
   std::vector<double> anodes;
+
+  for(const auto& frag : fAnodes) {
+    anodes.push_back(frag.Charge());
+  }
+
+  double anode = *std::min_element(anodes.begin(), anodes.end());
 
   for(const auto& frag : fLeft) {
     left = frag.Charge();
@@ -126,19 +134,12 @@ double Emma::CalculatePGACX() const {
     right = frag.Charge();
   }
 
-  for(const auto& frag : fAnodes) {
-    anodes.push_back(frag.Charge());
-  }
+  if(!fLeft.empty()) left -= anode;
+  if(!fRight.empty()) right -= anode;
 
-  if(left <= 0 || right <= 0 || anodes.empty()) return -1;
+  double xsum = left + right;
+  if(xsum == 0) return invalid;
 
-  double anode = *std::min_element(anodes.begin(), anodes.end());
-  double leftCorrected = left - anode;
-  double rightCorrected = right - anode;
-  double xsum = leftCorrected + rightCorrected;
-
-  if(xsum == 0) return -1;
-
-  double xdiff = (leftCorrected + fLdelay) - (rightCorrected + fRdelay);
+  double xdiff = (left + fLdelay) - (right + fRdelay);
   return (xdiff / xsum) * fXlength;
 }
