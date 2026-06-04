@@ -14,101 +14,144 @@ Fragment::Fragment() { }
 Fragment::~Fragment() { } 
 
 
-//int Fragment::Unpack(char *data) {
-//unpacks assuming grf4 data format
+// ============== Unpack ==============
+// Purpose: unpack one GRF4 TIGRESS fragment from header through trailer.
+// Inputs: data points to Word I; nwords is the trailer relative index.
+// Outputs: returns true for a good fragment and fills fragment fields.
 bool Fragment::Unpack(uint32_t *data,int &nwords) {
-  
-  //for(int i=0;i<nwords;i++) {
-  //  printf("%p ",(data+nwords));
-  //}
-  //printf("\n");
+  if(data == nullptr || nwords <= 0) {
+    return false;
+  }
 
-  int cword =0; // points to header;
-  //printf("%p \t %i\n",data,nwords);  
-  //return;
-  uint32_t datum = *(data+cword);
+  auto packet = [](uint32_t word) {
+    return word & 0xf0000000;
+  };
+  auto isNonPacket = [](uint32_t word) {
+    return (word & 0x80000000) == 0;
+  };
+  auto signed25 = [](uint32_t word) {
+    return int((word & 0x01ffffff) |
+               (((word & 0x01000000) == 0x01000000) ? 0xfe000000 : 0x0));
+  };
+
+  // Word I: event header.
+  int cword = 0;
+  uint32_t datum = data[cword];
+  int wordCount = (datum & 0x01f00000) >> 20;
   SetAddress((datum&0x000ffff0) >> 4);
   SetDetType((datum&0x0000000f) >> 0);
+  SetTimestampUnit(10);
 
-  //network packet
-  cword+=1; // points to network packet? 
-  datum = *(data+cword);
-  if((datum&0xf0000000) == 0xd0000000) { //yes.
-    cword+=1;
+  cword++;
+
+  // Word II: optional network packet after the header.
+  if(cword >= nwords) {
+    return false;
+  }
+  if(packet(data[cword]) == 0xd0000000) {
+    cword++;
   }
 
-  //filter pattern;
-  datum = *(data+cword);
-  if(datum&0x00008000) SetHasWave();
-  SetFilterPattern((datum&0x3fff0000)>>16);
-  SetPileup(datum&0x0000001f);
-
-  cword+=1; //advance to iv
-  cword+=1; //advance to v
-
-  datum = *(data+cword);
-  if((datum&0xf0000000)!=0xa0000000)  {
-    cword+=1; //advance to v
-    datum = *(data+cword);
-    if((datum&0xf0000000)!=0xa0000000)  {
-      cword+=1; //advance to v
-      datum = *(data+cword);
+  // Word III: optional primary filter pattern and pileup/waveform flags.
+  if(cword >= nwords) {
+    return false;
+  }
+  datum = data[cword];
+  if((datum & 0xc0000000) == 0x00000000) {
+    if(datum & 0x00008000) {
+      SetHasWave();
     }
+    SetFilterPattern((datum & 0x3fff0000) >> 16);
+    SetPileup(datum & 0x0000001f);
+    cword++;
   }
 
-  //for(int i=0;i<nwords;i++) {
-  //  printf("%p ",*(data+i));
-  //}
-  //printf("\n");
-
-  datum = *(data+cword);
-  if((datum&0xf0000000)!=0xa0000000)  { return false;
-    //printf("bad first timestamp word! %p \n",datum);
-    //for(int i=0;i<nwords;i++) {
-    //  printf("%p ",*(data+i));
-    //}
-    //printf("\n");
+  // Word IV*: optional repeated filter IDs before the channel trigger ID.
+  while(cword < nwords && isNonPacket(data[cword])) {
+    cword++;
   }
-  long timestamp = (datum & 0x0fffffff);
-  cword+=1; //advance to vi
 
-  // --- Read Chunk VII (Timestamp High) ---
-  datum = *(data+cword);
-  if((datum&0xf0000000)!=0xb0000000)  { return false; } //printf("bad second timestamp word! %p \n",datum); } 
-  timestamp += (long(datum & 0x00003fff) << 28);
+  // Word V: channel trigger ID.
+  if(cword >= nwords || packet(data[cword]) != 0x90000000) {
+    return false;
+  }
+  int channelId = data[cword] & 0x0fffffff;
+  cword++;
+
+  // Word Va: optional network packet before the timestamp, matching GRSISort tolerance.
+  if(cword >= nwords) {
+    return false;
+  }
+  if(packet(data[cword]) == 0xd0000000) {
+    cword++;
+  }
+
+  // Word VI: timestamp low bits.
+  if(cword >= nwords) {
+    return false;
+  }
+  if(packet(data[cword]) != 0xa0000000) {
+    return false;
+  }
+  long timestamp = data[cword] & 0x0fffffff;
+  cword++;
+
+  // Word VII: timestamp high bits.
+  if(cword >= nwords) {
+    return false;
+  }
+  if(packet(data[cword]) != 0xb0000000) {
+    return false;
+  }
+  timestamp += (long(data[cword] & 0x00003fff) << 28);
   SetTimestamp(timestamp);
-  cword+=1;
+  cword++;
 
-  // --- Read Chunk VIII (Charge/Waveform Check) ---
-  if ((datum & 0xf0000000) == 0xc0000000) {
-    // Process waveform data words until the signature changes
-    while ((datum & 0xf0000000) == 0xc0000000) {
-      // (Waveform data processing would go here)
-      datum = *(data+cword);
-      cword+=1;
-    }
+  // Word VIIa*: optional waveform packets. Word III already set HasWave().
+  if(cword >= nwords) {
+    return false;
+  }
+  while(cword < nwords && packet(data[cword]) == 0xc0000000) {
+    cword++;
   }
 
-  // --- Parse Charge and Integration Values ---
-  datum = *(data+cword);
-  int tempChg = (datum & 0x3ffffff);
-  // Bit manipulation adjusted for clearer casting/shifting:
-  int tempInt = (datum & 0x7c000000) >> (26-9); 
+  // Word VIII: integration length high bits and pulse height.
+  if(cword >= nwords || !isNonPacket(data[cword])) {
+    return false;
+  }
+  datum = data[cword];
+  int tempChg = signed25(datum);
+  int tempInt = ((datum & 0x7c000000) >> 17) |
+                (((datum & 0x40000000) == 0x40000000) ? 0xc000 : 0x0);
+  cword++;
 
-  cword+=1;
-  // --- Read Chunk IX (CFD/More Integration Values) ---
-  datum = *(data+cword);
-
+  // Word IX: integration length low bits and CFD.
+  if(cword >= nwords || !isNonPacket(data[cword])) {
+    return false;
+  }
+  datum = data[cword];
   SetCfd(datum & 0x003fffff);
-  tempInt += ((datum & 0x7fc00000) >> 22);
+  tempInt |= ((datum & 0x7fc00000) >> 22);
+  cword++;
+
+  // Word X-XIV: optional pileup/multi-charge words. Skip extras and keep Word VIII/IX charge.
+  while(cword < nwords && isNonPacket(data[cword])) {
+    cword++;
+  }
+
+  // Word XV: event trailer.
+  if(cword != nwords || packet(data[cword]) != 0xe0000000) {
+    return false;
+  }
+  if((data[cword] & 0x00003fff) != (channelId & 0x00003fff)) {
+    return false;
+  }
+  (void)wordCount;
   AddInt(tempInt);
   AddCharge(tempChg);
-  
-  SetTimestampUnit(10);
+
   SetTheta();
-  //Print();
   return true;
-  //return bytes_processed;
 }
 
 // =========== Print() ================= //
@@ -254,5 +297,3 @@ int Fragment::ArryNumber() const {
   }
   return 99;
 }
-
-

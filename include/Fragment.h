@@ -1,6 +1,7 @@
 #ifndef __FRAGMENT_H__
 #define __FRAGMENT_H__
 
+#include <string>
 #include <vector>
 
 //#include <TObject.h>
@@ -24,13 +25,13 @@ class Fragment {
     // type == in tigress everything is a grif16 - so i do not care. 
     void SetAddress(int address)      { fAddress = address; }  
     void SetDetType(int detType)      { fDetType = detType; }
-    void SetTimestamp(long timestamp) { fTimestamp = timestamp; }
+    void SetTimestamp(long timestamp) { fTimestamp = timestamp; UpdateTime(); }
     void SetHasWave()                 { fHasWave = !fHasWave; }
     void SetWaveSamples(int samples)  { fWaveSamples = samples; }
-    void SetCfd(int cfd)              { fCfd = cfd; }
+    void SetCfd(int cfd)              { fCfd = cfd; UpdateTime(); }
     void SetFilterPattern(int fp)     { fFilterPattern = fp; }    
     void SetPileup(int pileup)        { fPileup = pileup; }  
-    void SetTimestampUnit(int timestampunit) {fTimestampUnit = timestampunit;}
+    void SetTimestampUnit(int timestampunit) { fTimestampUnit = timestampunit; UpdateTime(); }
     void AddCharge(int chg); 
     void AddInt(int i)                { fInt.push_back(i); }
     void SetTheta(); 
@@ -39,7 +40,7 @@ class Fragment {
     int  DetType()   const { return fDetType; }
 
     long Timestamp() const { return fTimestamp; }
-    double Time()    const { return double(fTimestamp&0xfffffffffffc0000)*fTimestampUnit + double(fCfd+gRandom->Uniform())/1.6; } 
+    double Time()    const { return fTime; } 
     int  Cfd()       const { return fCfd;       }
     int  Filter()    const { return fFilterPattern; }
     int  Pileup()    const { return fPileup;        }
@@ -73,11 +74,18 @@ class Fragment {
     int  fWaveSamples{-1};
 
     int fTimestampUnit{-1};    
+    double fTime{-1};
 
     std::vector<int> fInt;
     std::vector<float> fCharge;
     std::vector<float> fEnergy;
     double fTheta{-1};
+
+    void UpdateTime() {
+      if(fTimestamp < 0 || fCfd < 0 || fTimestampUnit < 0) return;
+      fTime = double(fTimestamp & 0xfffffffffffc0000) * fTimestampUnit
+            + double(fCfd + gRandom->Uniform()) / 1.6;
+    }
 
   ClassDef(Fragment,1);
 };

@@ -5,6 +5,7 @@
 - [Event Building Rule](#event-building-rule)
 - [Good Event Tagging](#good-event-tagging)
 - [Fragment Class Contents](#fragment-class-contents)
+- [TIGRESS Unpack Rule](#tigress-unpack-rule)
 - [Event Class Contents](#event-class-contents)
 - [Tigress and Emma Classes](#tigress-and-emma-classes)
 - [Analysis Conversion](#analysis-conversion)
@@ -86,6 +87,14 @@ Important accessors and helpers:
 - `Number()`, `DetNumber()`, `XtalNumber()`, and `ArryNumber()`: return mapped detector indices.
 - `Name()`: returns the mapped channel name.
 - `Doppler(beta)`: returns Doppler-corrected energy.
+
+## TIGRESS Unpack Rule
+
+`Fragment::Unpack()` unpacks one GRF4 TIGRESS fragment from Word I through the trailer. A fragment is accepted only when the expected packet structure is found: optional network packet, optional filter pattern words, channel trigger ID, timestamp low and high words, optional waveform packets, Word VIII/IX charge and integration words, optional pileup/multi-charge words, and the event trailer.
+
+For pileup/multi-charge fragments, Word X-XIV are skipped. The stored charge and `fInt` always come from Word VIII and Word IX. `AddInt(tempInt)` is called before `AddCharge(tempChg)` so that charge normalization and energy calibration use the selected integration length.
+
+`Time()` returns a cached `fTime`; it is set when timestamp, CFD, and timestamp unit are all available during unpacking. This avoids repeated calls to `Time()` receiving different CFD random-smearing values from `gRandom`.
 
 ## Event Class Contents
 

@@ -1,9 +1,9 @@
 
 #include<cstdio>
 #include<chrono>
-#include<map>
 #include<string>
 #include<thread>
+#include<vector>
 
 #include <TMidasBanks.h>
 #include <TMidasFile.h>
@@ -34,7 +34,10 @@ const std::chrono::seconds interval(1); // 1 second interval
 static Long64_t xferhfts;     // Time stamp to be transferred from ADC to TDC; 10 ns ticks
 
 int main(int argc, char **argv) {
-  
+  if(argc < 2) {
+    printf("usage: %s input.mid\n", argv[0]);
+    return 1;
+  }
 
   TMidasFile infile(argv[1]);
   TMidasEvent event;
@@ -50,32 +53,23 @@ int main(int argc, char **argv) {
   //start event process;
   EventProcess::Get();
 
-  std::map<std::string,int> banksFound;
-  std::map<std::string,int> banksFound2;
-  std::map<int,int>         typeFound;
-
-  int counter = 0;
   while(infile.Read(event)) {
     //if(!event.GetEventId()&0xf000)
     //event.Print();
     switch(event.GetEventId()) {
       case 1:  //trigger
         xferhfts = 0;
-        //printf("\n\n--------------------%i--------------------- \n",counter);
         event.SetBankList();
         //if(event.GetTriggerMask()==0) event.Print("all");
         void *ptr;
         int banksize;
         if((banksize = event.LocateBank(nullptr, "GRF4", &ptr)) > 0) {
-          banksFound["GRIF4"]++;
           MakeTigressFragments((uint32_t*)ptr,banksize); 
         } else if((banksize = event.LocateBank(nullptr, "MADC", &ptr)) > 0) {
-          //banksFound["MADC"]++;     // adc
           //printf(" ------------------------------------------ \n");
           MakeEmmaADC((uint32_t*)ptr,banksize); 
           if((banksize = event.LocateBank(nullptr, "EMMT", &ptr)) > 0) {   // MADC and EMMT are nested.
             MakeEmmaTDC((uint32_t*)ptr,banksize); 
-            //banksFound["EMMT"]++;   // tdc
           }
           //event.Print("all");
           //printf("\n------------------------------------------ \n\n");
@@ -93,8 +87,6 @@ int main(int argc, char **argv) {
       case 0x8002: //message Event;
         break;
     };
-    typeFound[event.GetEventId()]++;
-    counter++;
     doStatus(infile);
   } 
   EventBuilder::Get()->Stop();
@@ -106,13 +98,11 @@ int main(int argc, char **argv) {
     doStatus(infile,true,true);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
-  
+
   doStatus(infile,true,false);
   OutputManager::Close();
   return 0;  
 }
-
-
 // ======================================================================================= // 
 void doStatus(TMidasFile &infile, bool forcePrint, bool drainingQueue) {
 
@@ -304,28 +294,19 @@ void MakeEmmaTDC(uint32_t* pdata ,int size) {
 // ======================================================================================= // 
 void MakeTigressFragments(uint32_t *pdata,int size) { 
   int words=0;
-  int counter=0;
-  int good=0;
-  int bad=0;
   uint32_t *pStart = 0; 
   uint32_t *pEnd   = 0;
   while(words<size) {
-    //printf("%p \n",*(pdata+words));
     if((*(pdata+words)&0xf0000000)==0x80000000)
       pStart = pdata+words;
     if((*(pdata+words)&0xf0000000)==0xe0000000)
       pEnd   = pdata+words;
     if(pStart!=0 && pEnd!=0) {
-      counter++;
       int nwords = int(pEnd-pStart);
       std::unique_ptr<Fragment> frag = std::make_unique<Fragment>();
-      int i=0;
       if(frag.get()->Unpack(pStart,nwords)) {
-        good++;
         EventBuilder::Get()->push(std::move(frag));
 //=========================================================================================================//
-      }else{
-        bad++;
       }
       pStart = 0;
       pEnd   = 0;
@@ -333,26 +314,6 @@ void MakeTigressFragments(uint32_t *pdata,int size) {
     words+=1;
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -30,7 +30,7 @@ TigressHit::~TigressHit() { }
 // outputs: none
 void TigressHit::Clear() {
   fArryNumber = -1;
-  fBGOFired = false;
+  // fBGOFired = false;
   fCores.clear();
   fSegments.clear();
   fBgos.clear();
@@ -47,19 +47,18 @@ void TigressHit::Print() const {
   PrintFragments("bgo", fBgos);
 }
 
-// ============== SetBGOFired() ==============
-// purpose:
-// inputs: 
-// outputs: 
-void TigressHit::SetBGOFired() {
-  for(auto bgo:fBgos){
-    double tdif = fCores[0].Time() - bgo.Time();
-    double bgoE = bgo.Energy();
-    if(tdif>=BGOFiredWindow[0] && tdif<=BGOFiredWindow[1] && bgoE>BGOFiredEnergy){
-      fBGOFired = true;
-      return;
-    }
-  }
-  return;
-}
-
+// // ============== SetBGOFired() ==============
+// // purpose:
+// // inputs:
+// // outputs:
+// void TigressHit::SetBGOFired() {
+//   for(auto bgo:fBgos){
+//     double tdif = fCores[0].Time() - bgo.Time();
+//     double bgoE = bgo.Energy();
+//     if(tdif>=BGOFiredWindow[0] && tdif<=BGOFiredWindow[1] && bgoE>BGOFiredEnergy){
+//       fBGOFired = true;
+//       return;
+//     }
+//   }
+//   return;
+// }
