@@ -140,6 +140,7 @@ double Emma::CalculatePGACX() const {
   double xsum = left + right;
   if(xsum == 0) return invalid;
 
-  double xdiff = (left + fLdelay) - (right + fRdelay);
+  //double xdiff = (left + fLdelay) - (right + fRdelay);
+  double xdiff = (right + fLdelay) - (left + fRdelay);
   return (xdiff / xsum) * fXlength;
 }

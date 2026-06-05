@@ -46,13 +46,13 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment> > &Builtfrags) {
     fQueue.pop(); 
   }
 
-  long firstTime = Builtfrags.at(0).get()->TimestampNs(); 
+  long firstTime = Builtfrags.at(0).get()->Time(); 
   long topTime = -1;
   while(1) {   //currently this never ends...?
     if(fQueue.empty()) {
       break;
     }
-    topTime = fQueue.top().get()->TimestampNs();
+    topTime = fQueue.top().get()->Time();
     if((topTime - firstTime)>2500) {  
       break;
     }

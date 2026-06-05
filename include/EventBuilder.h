@@ -14,7 +14,8 @@ struct CompareFragmentPtrs {
       if(!a.get() && !b.get()) return false;
       if (!a.get()) return true;  
       if (!b.get()) return false; 
-      return a.get()->TimestampNs() > b.get()->TimestampNs();
+      //return a.get()->TimestampNs() > b.get()->TimestampNs();
+      return a.get()->Time() > b.get()->Time();
     }
 };
 
