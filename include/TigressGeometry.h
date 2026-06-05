@@ -8,7 +8,7 @@
 // GeBluePositionBack: with BGO shield (use this one)
 // GeBluePositionBack[DetectorNumber][SegNbr][CrystalColor]
 // DetectorNumber = [1,16] are valid; DetectorNumber=0 is all 0 array
-// SegNbr = [0,8], SegNbr=8 is core
+// SegNbr = [0,8], SegNbr=0 is core
 // CrystalColor=[0,3], following B,G,R,W
 // ======================================================= //
 
