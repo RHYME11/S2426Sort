@@ -46,19 +46,20 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment> > &Builtfrags) {
     fQueue.pop(); 
   }
 
-  long firstTime = Builtfrags.at(0).get()->Time(); 
-  long topTime = -1;
+  double lastTime = Builtfrags.back().get()->Time(); 
+  double topTime = -1;
   while(1) {   //currently this never ends...?
     if(fQueue.empty()) {
       break;
     }
     topTime = fQueue.top().get()->Time();
-    if((topTime - firstTime)>2500) {  
+    if((topTime - lastTime)>2500) {  
       break;
     }
     auto& top_ref = const_cast<std::unique_ptr<Fragment>&>(fQueue.top());
     Builtfrags.emplace_back(std::move(top_ref));
     fQueue.pop();
+    lastTime = Builtfrags.back().get()->Time();
   }
   //printf("i am here d\n");
   fPopped++;

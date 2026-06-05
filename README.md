@@ -14,24 +14,24 @@
 
 ## Event Building Rule
 
-`EventBuilder` collects unpacked `Fragment` objects in a priority queue ordered by `Fragment::TimestampNs()`. The fragment with the smallest nanosecond timestamp is always used as the first fragment of the next built event.
+`EventBuilder` collects unpacked `Fragment` objects in a priority queue ordered by `Fragment::Time()`. The fragment with the smallest time is always used as the first fragment of the next built event.
 
 The current event-building rule is:
 
 1. Push every unpacked fragment into `EventBuilder::fQueue`.
 2. Do not build events while the queue contains fewer than `20,000,000` fragments, unless input reading has stopped.
 3. When building starts, pop the earliest fragment from the queue.
-4. Use that earliest fragment timestamp as `firstTime`.
+4. Use the latest fragment already added to the event as `lastTime`.
 5. Continue adding fragments from the queue while:
 
 ```text
-top fragment TimestampNs() - firstTime <= 2500 ns
+top fragment Time() - lastTime <= 2500 ns
 ```
 
-6. Stop the event when the next queued fragment is more than `2500 ns` later than `firstTime`, or when the queue is empty.
+6. Stop the event when the next queued fragment is more than `2500 ns` later than the last fragment already added to the event, or when the queue is empty.
 7. After MIDAS input reading is complete, continue popping events until the queue is fully drained.
 
-This means one built event contains all queued fragments that fall within a `2.5 us` window starting from the earliest available fragment timestamp.
+This means event building uses a moving `2.5 us` window. A built event can have a first-to-last span larger than `2500 ns` when each adjacent fragment pair stays within the window.
 
 ## Good Event Tagging
 
