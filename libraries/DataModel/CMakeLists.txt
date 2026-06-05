@@ -16,7 +16,7 @@ root_generate_dictionary(G__Data
   MODULE DATA
   LINKDEF LinkDef.h)
 
-target_link_libraries(DATA PUBLIC CHANNEL ${ROOT_LIBRARIES})
+target_link_libraries(DATA PUBLIC CHANNEL TIGRESSGEOMETRY ${ROOT_LIBRARIES})
 
 #link the compiled libraries above to the final executable.
 target_link_libraries(s2426Sort DATA)

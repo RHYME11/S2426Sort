@@ -23,6 +23,12 @@ class TigressHit {
     // outputs: none
     void Print() const;
 
+    // ============== CoreEnergy ==============
+    // purpose: Return the preferred TIGRESS core energy.
+    // inputs: none
+    // outputs: last CoreA energy, otherwise last CoreB energy, or -1 if none exists
+    float CoreEnergy() const;
+
     int ArryNumber() const { return fArryNumber; }
     void SetArryNumber(int arryNumber) { fArryNumber = arryNumber; }
 

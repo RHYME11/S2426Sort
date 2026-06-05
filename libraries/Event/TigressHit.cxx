@@ -47,6 +47,35 @@ void TigressHit::Print() const {
   PrintFragments("bgo", fBgos);
 }
 
+// ============== CoreEnergy ==============
+// purpose: Return the preferred TIGRESS core energy.
+// inputs: none
+// outputs: last CoreA energy, otherwise last CoreB energy, or -1 if none exists
+float TigressHit::CoreEnergy() const {
+  float coreAEnergy = -1;
+  float coreBEnergy = -1;
+  bool hasCoreA = false;
+  bool hasCoreB = false;
+
+  for(const auto& core : fCores) {
+    if(core.DetType() == 0) {
+      coreAEnergy = core.Energy();
+      hasCoreA = true;
+    } else if(core.DetType() == 1) {
+      coreBEnergy = core.Energy();
+      hasCoreB = true;
+    }
+  }
+
+  if(hasCoreA) {
+    return coreAEnergy;
+  }
+  if(hasCoreB) {
+    return coreBEnergy;
+  }
+  return -1;
+}
+
 // // ============== SetBGOFired() ==============
 // // purpose:
 // // inputs:

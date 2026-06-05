@@ -139,6 +139,7 @@ Important accessors:
 - `fCores`: TIGRESS core fragments.
 - `fSegments`: TIGRESS segment fragments.
 - `fBgos`: BGO fragments.
+- `CoreEnergy()`: returns the last CoreA (`DetType() == 0`) energy when any CoreA is present, otherwise the last CoreB (`DetType() == 1`) energy when any CoreB is present, otherwise `-1`.
 
 `Tigress` groups all TIGRESS hits in one event. `Tigress::Set(event)` builds a map keyed by `ArryNumber()` and then stores the resulting `TigressHit` objects.
 
@@ -183,6 +184,15 @@ The `CHANNEL` library builds a ROOT dictionary, so `Channel` can be used from an
 ```cpp
 gSystem->Load("build/lib/libCHANNEL.dylib");
 Channel::Read("cal/CalibrationFile_May1526_pol1.cal");
+```
+
+The `TIGRESSGEOMETRY` library builds a ROOT dictionary for the TIGRESS geometry arrays:
+
+```cpp
+gSystem->AddDynamicPath("build/lib");
+gSystem->Load("libTIGRESSGEOMETRY");
+auto x = TigressGeometry::GeBluePosition[det][seg][0];
+auto xb = TigressGeometry::GeBluePositionBack[det][seg][0];
 ```
 
 ## Output Trees
