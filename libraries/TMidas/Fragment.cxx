@@ -293,7 +293,7 @@ int Fragment::ArryNumber() const {
     case 'R': xtal = 2; break;
     case 'W': xtal = 3; break;
     }
-    return det * 4 + xtal+1;
+    return det * 4 + xtal;
   }
   return 99;
 }
