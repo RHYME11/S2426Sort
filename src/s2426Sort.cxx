@@ -13,6 +13,7 @@
 #include <EventBuilder.h>
 #include <EventProcess.h>
 
+#include <Histogramer.h>
 #include <OutputManager.h>
 #include <Channel.h>
 
@@ -42,9 +43,12 @@ int main(int argc, char **argv) {
   TMidasFile infile(argv[1]);
   TMidasEvent event;
 
+  Histogramer *gHist = Histogramer::Get();
+
   int run,subrun;
   getRunNumber(argv[1],run,subrun);
   OutputManager::Get()->Open(run,subrun);
+  gHist->SetRun(run,subrun);
 
   Channel::Read("cal/CalibrationFile_May1526_pol1.cal"); 
 
@@ -100,6 +104,7 @@ int main(int argc, char **argv) {
   }
 
   doStatus(infile,true,false);
+  gHist->Close();
   OutputManager::Close();
   return 0;  
 }
