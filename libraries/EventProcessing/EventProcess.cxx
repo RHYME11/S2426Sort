@@ -42,7 +42,7 @@ void EventProcess::loop() {
     }
     fPushed += builtfrags.size(); 
 // =============================================================== //
-    std::vector<std::unique_ptr<Fragment> >                cores;
+    /*std::vector<std::unique_ptr<Fragment> >                cores;
     std::map<int,std::vector<std::unique_ptr<Fragment> > > segments;
     std::map<int,std::vector<std::unique_ptr<Fragment> > > suppressors;
     std::vector<std::unique_ptr<Fragment> >                emmat;
@@ -124,6 +124,7 @@ void EventProcess::loop() {
         Histogramer::Get()->Fill("Event","adc_tsns - core_tsns",1000,-5000,5000,tdif);
       }// core loop j over
     }// si loop i over
+    */
 // =============================================================== //
     std::vector<Fragment> fragments;
     fragments.reserve(builtfrags.size());

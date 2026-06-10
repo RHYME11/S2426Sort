@@ -286,7 +286,7 @@ int Fragment::ArryNumber() const {
   int det = 99;
   int xtal = -1;
   if (name.length() > 5) {
-    det = std::stoi(name.substr(3,2));
+    det = std::stoi(name.substr(3,2))-1;
     switch (name[5]) {
     case 'B': xtal = 0; break;
     case 'G': xtal = 1; break;
