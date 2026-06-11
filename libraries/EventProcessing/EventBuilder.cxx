@@ -1,6 +1,8 @@
 
 #include<EventBuilder.h>
 
+#include <globals.h>
+
 EventBuilder *EventBuilder::fEventBuilder = 0;
 
 EventBuilder::EventBuilder() {
@@ -52,46 +54,51 @@ bool EventBuilder::pop(std::vector<Fragment*> &BuiltFrags) {
 
 
 void EventBuilder::push(std::unique_ptr<Fragment> frag) {
+  if(!frag) return;
   std::lock_guard<std::mutex> lk(fMutex);
-  fQueue.push(std::move(frag));
+ 
+  const long ts = frag->Timestamp();
+  if(ts> fLatestTimestampSeen) fLatestTimestampSeen = ts;
+
+  fQueue.emplace(ts,std::move(frag));
   fPushed++;
 }
 
-bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment> > &Builtfrags) {
-  std::lock_guard<std::mutex> lk(fMutex);
-  //printf("\n\n\n\n\n");
 
-  //printf("i am here a\n");
+bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
+  std::lock_guard<std::mutex> lk(fMutex);
 
   if(fQueue.empty()) return false;
 
-  if(fQueue.size()<1000000) {
-    if(fStop) {
-        return false;
+  //if(fQueue.size() < 1000000 && !fStop) {
+  //  return false;
+  //}
+
+  const long firstTime = fQueue.begin()->first;
+
+if(!fFlushing) {
+    const long safeTime = fLatestTimestampSeen - BUILD_WINDOW - REORDER_SLACK;
+
+    if(firstTime > safeTime) {
+      return false;
     }
   }
-  //printf("i am here b\n");
-  {
-    auto& top_ref = const_cast<std::unique_ptr<Fragment>&>(fQueue.top());
-    Builtfrags.emplace_back(std::move(top_ref));
-    fQueue.pop(); 
+
+  auto it = fQueue.begin();
+
+  while(it != fQueue.end()) {
+    const long thisTime = it->first;
+
+    if(std::labs(thisTime - firstTime) > BUILD_WINDOW) {
+      break;
+    }
+
+    Builtfrags.emplace_back(std::move(it->second));
+    it = fQueue.erase(it);
   }
 
-  //printf("i am here c\n");
-  long firstTime = Builtfrags.at(0).get()->Timestamp(); 
-  long topTime = -1;
-  while(1) {   //currently this never ends...?
-    if(fQueue.empty()) break;
-    topTime = fQueue.top().get()->Timestamp();
-    //printf("\n\n\n\nabs(firstTime - topTime): %lu\n\n\n\n",abs(firstTime - topTime));
-    if(abs(firstTime - topTime)>1000) break;
-    auto& top_ref = const_cast<std::unique_ptr<Fragment>&>(fQueue.top());
-    Builtfrags.emplace_back(std::move(top_ref));
-    fQueue.pop();
-  }
-  //printf("i am here d\n");
   fPopped++;
-  return true;
+  return !Builtfrags.empty();
 }
 
 

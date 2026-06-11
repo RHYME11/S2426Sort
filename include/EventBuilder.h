@@ -2,9 +2,11 @@
 #define __EVENTBUILDER_H__
 
 #include <vector>
-#include <queue>
+#include <map>
 #include <mutex>
 #include <thread>
+
+#include <atomic>
 
 #include <Fragment.h>
 
@@ -38,7 +40,10 @@ class EventBuilder {
     void loop(); // monitor the queue and decide when to do useful things.
 
     
-    void Stop() { fStop = true; }
+    void Stop()  { fStop = true; }
+    void Flush() { fFlushing = true; }
+    bool Flushing() const { return fFlushing.load(); }
+
 
     bool     Running() const { return !fStop.load(); }
     uint32_t Size()    const { std::lock_guard lk(fMutex); return fQueue.size(); }
@@ -53,12 +58,20 @@ class EventBuilder {
     static EventBuilder *fEventBuilder;
 
     long fLastTimestamp{-1};
+    long fLatestTimestampSeen{0};
+    std::atomic_bool fFlushing{false};
+
+    static constexpr long BUILD_WINDOW  = 1000;
+    static constexpr long REORDER_SLACK = 50000000;
+
     mutable std::mutex fMutex;
-    std::priority_queue<std::unique_ptr<Fragment>,
-                        std::vector<std::unique_ptr<Fragment> >,
-                        CompareFragmentPtrs > fQueue;
+    //std::priority_queue<std::unique_ptr<Fragment>,
+    //                    std::vector<std::unique_ptr<Fragment> >,
+    //                    CompareFragmentPtrs > fQueue;
     //std::priority_queue<Fragment*,
     //                    std::vector<Fragment*> > fQueue;
+    std::multimap<long, std::unique_ptr<Fragment>> fQueue;
+
 
     std::atomic<uint32_t> fPushed{0};
     std::atomic<uint32_t> fPopped{0};

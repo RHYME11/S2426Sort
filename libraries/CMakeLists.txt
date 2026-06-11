@@ -1,7 +1,9 @@
 
+add_subdirectory(Channel)
+
 add_subdirectory(TMidas)
 
-add_subdirectory(Channel)
+add_subdirectory(Physics)
 
 add_subdirectory(Histogramer)
 

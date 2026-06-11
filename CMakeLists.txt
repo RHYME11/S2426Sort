@@ -42,6 +42,9 @@ add_executable(s2426Sort src/s2426Sort.cxx)
 #setting include paths: TODO, copy headers from library directories(?)
 include_directories(include ${ROOT_INCLUDE_DIRS}) 
 
+target_link_libraries(s2426Sort PRIVATE ROOT::Core ROOT::MathCore)
+
+
 #This tells cmake to continue into these directories.
 add_subdirectory(libraries)
 
