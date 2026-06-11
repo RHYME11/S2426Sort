@@ -3,7 +3,6 @@
 
 
 #include <TObject.h>
-#include <Detector.h>
 
 //class Fragment;
 #include <Fragment.h>
