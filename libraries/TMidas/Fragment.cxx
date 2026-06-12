@@ -40,7 +40,6 @@ bool Fragment::Unpack(uint32_t *data,int &nwords) {
   int wordCount = (datum & 0x01f00000) >> 20;
   SetAddress((datum&0x000ffff0) >> 4);
   SetDetType((datum&0x0000000f) >> 0);
-  SetTimestampUnit(10);
 
   cword++;
 
