@@ -63,6 +63,7 @@ void EventProcess::loop() {
     if(builtfrags.empty()) continue;
 
     DetectorEvent event;
+    event.timestamp     = builtfrags.front()->Timestamp();
     event.timestampNs   = builtfrags.front()->TimestampNs();
     event.tigress       = std::make_unique<Tigress>();
     event.emma          = std::make_unique<Emma>();

@@ -40,28 +40,27 @@ class Emma {
   
     bool empty() const { return ((fADCTime==1) || (fTDCTime==-1)); }
 
-  //private:
     double fADCTime{1};
     double fTDCTime{-1};
 
+  //private:
     std::vector<Fragment> fADC;    //!
     std::vector<Fragment> fTDC;   //!
 
-    EmmaHit fATop;
-    EmmaHit fAMiddle;
-    EmmaHit fABottom; 
+    std::vector<EmmaHit> fAnode;
     EmmaHit fSi;
 
-    EmmaHit fIon1;
-    EmmaHit fIon2;
-    EmmaHit fIon3;
-    EmmaHit fIon4;
+    std::vector<EmmaHit> fIon1;
+    std::vector<EmmaHit> fIon2;
+    std::vector<EmmaHit> fIon3;
+    std::vector<EmmaHit> fIon4;
 
-    double fX;
-    double fY;
+    std::vector<EmmaHit> fLeft;
+    std::vector<EmmaHit> fRight;
+    std::vector<EmmaHit> fTop;
+    std::vector<EmmaHit> fBot;
 
-    double fTrigger;
-    double fRf;
+    double fPGACX{std::numeric_limits<double>::quiet_NaN()};
 
   ClassDef(Emma,1)
 };
