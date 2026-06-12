@@ -63,10 +63,9 @@ void EventProcess::loop() {
     if(builtfrags.empty()) continue;
 
     DetectorEvent event;
-    event.timestamp = builtfrags.front()->Timestamp();
-    event.tigress   = std::make_unique<Tigress>();
-    event.emma      = std::make_unique<Emma>();
-    //event.tip       = std::make_unique<Tip>();
+    event.timestampNs   = builtfrags.front()->TimestampNs();
+    event.tigress       = std::make_unique<Tigress>();
+    event.emma          = std::make_unique<Emma>();
 
 
     for(auto& frag : builtfrags) {
@@ -92,7 +91,6 @@ void EventProcess::loop() {
     
     event.tigress->BuildHits();
     event.emma->BuildHits();
-    //event.tip->BuildHits();
 
     push(std::move(event));
   }

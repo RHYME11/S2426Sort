@@ -36,7 +36,7 @@ class Fragment {
     int  DetType()   const { return fDetType; }
 
     long Timestamp() const { return fTimestamp; }
-    double Time()    const { return double(fTimestamp&0xfffffffffffc0000) + double(fCfd)/16.; } 
+    double Time()    const { return fTime;} 
      long TimestampNs()  const {return fTimestamp * fTimestampUnit;}
     int  Cfd()       const { return fCfd;       }
     int  Filter()    const { return fFilterPattern; }

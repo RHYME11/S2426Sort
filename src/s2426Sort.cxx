@@ -29,8 +29,6 @@ auto lastPrint = std::chrono::steady_clock::now();
 auto timeEllapsed = std::chrono::duration_cast<std::chrono::seconds>(lastPrint-start);
 const std::chrono::seconds interval(1); // 1 second interval
 
-constexpr long EMMA_TO_TIGRESS_TS_SCALE = 5;
-
 int main(int argc, char **argv) {
   TMidasFile infile(argv[1]);
   TMidasEvent event;
@@ -223,7 +221,6 @@ long MakeEmmaADC(uint32_t* pdata,int size) {
       case 0x00000000:
         if(datum & 0x00800000) {//
           timestamp += ((long(datum&0x0000ffff))<<30);
-          timestamp = timestamp * EMMA_TO_TIGRESS_TS_SCALE;
         } else if(datum & 0x04000000) {//
           channel = (datum>>16)&0x1F; // ADC Channel Number
           charge  = (datum & 0xfff); // ADC Charge
@@ -237,8 +234,8 @@ long MakeEmmaADC(uint32_t* pdata,int size) {
           frag.get()->SetCfd(0);             
           frag.get()->SetFilterPattern(0);   
           frag.get()->SetPileup(0);
-          frag.get()->SetTimestampUnit(50);          
           frag.get()->SetDetType(13);
+          frag.get()->SetTimestampUnit(50);          
           EventBuilder::Get()->push(std::move(frag));
         }
         break;   

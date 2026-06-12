@@ -16,7 +16,7 @@ struct CompareFragmentPtrs {
       if(!a.get() && !b.get()) return false;
       if (!a.get()) return true;  
       if (!b.get()) return false; 
-      return a.get()->Timestamp() > b.get()->Timestamp();
+      return a.get()->TimestampNs() > b.get()->TimestampNs();
     }
 };
 
@@ -51,11 +51,11 @@ class EventBuilder {
     static EventBuilder *fEventBuilder;
 
     long fLastTimestamp{-1};
-    long fLatestTimestampSeen{0};
+    long fLatestTimestampNsSeen{0};
     std::atomic_bool fFlushing{false};
 
-    static constexpr long BUILD_WINDOW  = 1000;
-    static constexpr long REORDER_SLACK = 50000000;
+    static constexpr long BUILD_WINDOW  = 10000;
+    static constexpr long REORDER_SLACK = 500000000;
 
     mutable std::mutex fMutex;
     std::multimap<long, std::unique_ptr<Fragment>> fQueue;

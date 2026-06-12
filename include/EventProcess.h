@@ -13,10 +13,10 @@
 
 struct DetectorEvent {
   long timestamp{0};
+  long timestampNs{0};
 
   std::unique_ptr<Tigress> tigress;
   std::unique_ptr<Emma>    emma;
-  //std::unique_Ptr<Tip>     tip;
 
   bool Empty() const {
     return !tigress; //&& !emma && !tip;
@@ -30,7 +30,6 @@ class EventProcess {
 
     void push(DetectorEvent event);
     bool pop(DetectorEvent &event);  
-    //bool peek(Fragment*& out);
 
     void loop(); // monitor the queue and decide when to do useful things.
 

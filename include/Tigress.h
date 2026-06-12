@@ -20,6 +20,7 @@ class TigressHit {
     int    fAddress{-1};
     int    fId{-1};
     long   fTimestamp{0};
+    long   fTimestampNs{0};
     double fTime{0};
     double fCharge{0};
     double fEcal{0};

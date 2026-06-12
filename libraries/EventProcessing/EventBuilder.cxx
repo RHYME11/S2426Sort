@@ -23,42 +23,12 @@ EventBuilder::~EventBuilder() {
     fWorker.join();
 }
 
-//bool EventBuilder::push(Fragment *frag) {
-//  std::lock_guard<std::mutex> lk(fMutex);
-//  if(fQueue.size()>500000) return false;
-
-//  fQueue.push(std::move(frag)); 
-//  return true;
-//}
-/*
-bool EventBuilder::pop(std::vector<Fragment*> &BuiltFrags) {
-  std::lock_guard<std::mutex> lk(fMutex);
-  if(fQueue.empty()) return false;
-
-  Fragment *first = fQueue.top();
-  BuiltFrags.push_back(first);
-  fQueue.pop();
-  //one in vector - now fill vector till build window.
-  if(fQueue.empty()) return true; // at least one already in the vector. 
-  return true;
-  Fragment *other = fQueue.top();
-  while(abs(other->Timestamp() - first->Timestamp())<10000) { 
-    BuiltFrags.push_back(other);
-    fQueue.pop();
-    other = fQueue.top();
-  }
-
-  return true;
-}
-*/
-
-
 void EventBuilder::push(std::unique_ptr<Fragment> frag) {
   if(!frag) return;
   std::lock_guard<std::mutex> lk(fMutex);
  
-  const long ts = frag->Timestamp();
-  if(ts> fLatestTimestampSeen) fLatestTimestampSeen = ts;
+  const long ts = frag->TimestampNs();
+  if(ts> fLatestTimestampNsSeen) fLatestTimestampNsSeen = ts;
 
   fQueue.emplace(ts,std::move(frag));
   fPushed++;
@@ -70,14 +40,10 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
 
   if(fQueue.empty()) return false;
 
-  //if(fQueue.size() < 1000000 && !fStop) {
-  //  return false;
-  //}
-
   const long firstTime = fQueue.begin()->first;
 
 if(!fFlushing) {
-    const long safeTime = fLatestTimestampSeen - BUILD_WINDOW - REORDER_SLACK;
+    const long safeTime = fLatestTimestampNsSeen - BUILD_WINDOW - REORDER_SLACK;
 
     if(firstTime > safeTime) {
       return false;
@@ -101,19 +67,6 @@ if(!fFlushing) {
   return !Builtfrags.empty();
 }
 
-
-
-/*
-bool EventBuilder::peek(Fragment*& out) {
-  std::lock_guard<std::mutex> lk(fMutex);
-  if(fQueue.empty()) {
-    out = nullptr;
-    return false;
-  }
-  out = fQueue.top().get();
-  return true; 
-}
-*/
 
 void EventBuilder::loop() {
 

@@ -49,15 +49,6 @@ void DetectorProcess::loop() {
     // TIGRESS singles
     // -------------------------
     if(event.tigress) {
-      //for(auto& hit : event.tigress->Hits()) {
-      // Histogramer::Fill("tigress_energy",
-      //                    4000, 0, 4000,
-      //                    hit.Energy());
-
-      //  Histogramer::Fill("tigress_time",
-      //                    4000, -2000, 2000,
-      //                    hit.Time() - event.timestamp);
-      //}
       for(auto& current: event.tigress->fCoreHits) {
         int  det   = std::stoi(current.Name().substr(3,2));
         char color = current.Name().at(5);
@@ -79,12 +70,8 @@ void DetectorProcess::loop() {
     // -------------------------
 
     if(event.emma) {
-      //for(auto& hit : event.emma->Hits()) {
       if(!event.emma->empty()) {
-        Histogramer::Fill("emma_adc_tdc_time",
-            1000, -1000, 1000,
-            event.emma->fADCTime - event.emma->fTDCTime);
-        //}
+        Histogramer::Fill("emma_adc_tdc_time", 1000, -1000, 1000, event.emma->fADCTime - event.emma->fTDCTime);
       }
     }
 
@@ -92,14 +79,11 @@ void DetectorProcess::loop() {
     // TIGRESS-EMMA coincidences
     // -------------------------
     
-       if(event.tigress && event.emma) {
-       
-        for(auto& current: event.tigress->fCoreHits) {
-          Histogramer::Fill("emma_tig_dt",2000,-1000,1000,event.emma->fADCTime - current.Timestamp());
-
-        }
-
-       }
+    if(event.tigress && event.emma) {
+      for(auto& current: event.tigress->fCoreHits) {
+        Histogramer::Fill("emma_tig_dt",2000,-1000,1000,event.emma->fADCTime - current.TimestampNs());
+      }
+    }
   }
 }
 

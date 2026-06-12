@@ -20,8 +20,8 @@ void Emma::Print(Option_t *opt) const {  }
 
 void Emma::BuildHits() {
 
-  if(fADC.size()) { fADCTime = fADC.front().Timestamp(); }
-  if(fTDC.size()) { fTDCTime = fTDC.front().Timestamp(); }
+  if(fADC.size()) { fADCTime = fADC.front().TimestampNs(); }
+  if(fTDC.size()) { fTDCTime = fTDC.front().TimestampNs(); }
 
 }
 
