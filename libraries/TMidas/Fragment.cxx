@@ -149,7 +149,7 @@ bool Fragment::Unpack(uint32_t *data,int &nwords) {
   (void)wordCount;
   AddInt(tempInt);
   AddCharge(tempChg);
-
+  SetTimestampUnit(10);
   SetTheta();
   return true;
 }
