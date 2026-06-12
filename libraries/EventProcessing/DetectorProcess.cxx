@@ -89,10 +89,10 @@ void DetectorProcess::loop() {
           (color == 'G') ? 1 :
           (color == 'B') ? 2 :
           (color == 'W') ? 3 : -1;
-        Histogramer::Fill("Emma_tig","summary",70,0,70,det*4 + xtal,8000,0,4000,current.Energy());
+        Histogramer::Fill("Emma_Tig","summary",70,0,70,det*4 + xtal,8000,0,4000,current.Energy());
         Histogramer::Fill("Emma_Tig","emma_tig_dt",2000,-10000,10000,event.emma->ADCTime() - current.TimestampNs());
         if(IsGood){
-          Histogramer::Fill("Emma_tig","summary_good",70,0,70,det*4 + xtal,8000,0,4000,current.Energy());
+          Histogramer::Fill("Emma_Tig","summary_good",70,0,70,det*4 + xtal,8000,0,4000,current.Energy());
         }
       } // loop tig core over
       Histogramer::Fill("Emma_Tig","Si Size",10,0,10,event.emma->Si().size());
