@@ -41,12 +41,11 @@ Channel *Channel::Get(int address) {
 
 
 void Channel::Print(Option_t *opt) const {
-  printf("channel[0x%p]\n",fAddress);
+  printf("channel[0x%x]\n",fAddress);
   printf("\tName:     %s\n",fName.c_str());
   printf("\tNumber:   %i\n",fNumber);
   printf("\tCal Pars: "); for(auto i : fCalPars) printf("%.04f  ",i);
   printf("\n");
 
 }
-
 
