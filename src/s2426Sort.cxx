@@ -306,6 +306,12 @@ void MakeEmmaTDC(uint32_t* pdata ,int size, long adcTimestamp) {
           frag.get()->SetPileup(0);
           frag.get()->SetDetType(14);
           frag.get()->SetTimestampUnit(50);
+          
+          int c = frag.get()->Address()&0xff;
+          float chg = frag.get()->Charge(); 
+          Histogramer::Get()->Fill("eTDC",4000,0,64000,chg,
+              1000,0,1000,c);
+
           EventBuilder::Get()->push(std::move(frag));
         }
         addresses.clear();
