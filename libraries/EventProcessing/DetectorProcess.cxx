@@ -81,7 +81,7 @@ void DetectorProcess::loop() {
     
     if(event.tigress && event.emma) {
       for(auto& current: event.tigress->fCoreHits) {
-        Histogramer::Fill("emma_tig_dt",2000,-1000,1000,event.emma->fADCTime - current.TimestampNs());
+        Histogramer::Fill("emma_tig_dt",2000,-10000,10000,event.emma->fADCTime - current.TimestampNs());
       }
     }
   }
