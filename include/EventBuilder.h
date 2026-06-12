@@ -16,9 +16,6 @@ struct CompareFragmentPtrs {
       if(!a.get() && !b.get()) return false;
       if (!a.get()) return true;  
       if (!b.get()) return false; 
-
-      //a.get()->Print();
-      //b.get()->Print();
       return a.get()->Timestamp() > b.get()->Timestamp();
     }
 };
@@ -33,10 +30,6 @@ class EventBuilder {
 
     void push(std::unique_ptr<Fragment> frag);
     bool pop(std::vector<std::unique_ptr<Fragment> > &Builtfrags);  
-    //bool push(Fragment *frag);
-    //bool pop(std::vector<Fragment*> &Builtfrags);  
-    //bool peek(Fragment*& out);
-
     void loop(); // monitor the queue and decide when to do useful things.
 
     
@@ -65,11 +58,6 @@ class EventBuilder {
     static constexpr long REORDER_SLACK = 50000000;
 
     mutable std::mutex fMutex;
-    //std::priority_queue<std::unique_ptr<Fragment>,
-    //                    std::vector<std::unique_ptr<Fragment> >,
-    //                    CompareFragmentPtrs > fQueue;
-    //std::priority_queue<Fragment*,
-    //                    std::vector<Fragment*> > fQueue;
     std::multimap<long, std::unique_ptr<Fragment>> fQueue;
 
 

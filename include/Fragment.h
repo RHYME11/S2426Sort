@@ -3,9 +3,8 @@
 
 #include <vector>
 
-//#include <TObject.h>
-
 #include <Channel.h>
+#include "TRandom.h"
 
 class Fragment { 
   public:
@@ -28,7 +27,7 @@ class Fragment {
     void SetCfd(int cfd)              { fCfd = cfd; }
     void SetFilterPattern(int fp)     { fFilterPattern = fp; }    
     void SetPileup(int pileup)        { fPileup = pileup; }  
-
+    void SetTimestampUnit(int timestampunit) { fTimestampUnit = timestampunit; UpdateTime(); }
     void AddCharge(int chg); //           { fCharge.push_back(chg); }
     void AddInt(int i)                { fInt.push_back(i); }
   
@@ -38,6 +37,7 @@ class Fragment {
 
     long Timestamp() const { return fTimestamp; }
     double Time()    const { return double(fTimestamp&0xfffffffffffc0000) + double(fCfd)/16.; } 
+     long TimestampNs()  const {return fTimestamp * fTimestampUnit;}
     int  Cfd()       const { return fCfd;       }
     int  Filter()    const { return fFilterPattern; }
     int  Pileup()    const { return fPileup;        }
@@ -73,6 +73,19 @@ class Fragment {
     std::vector<int> fInt;
     std::vector<float> fCharge;
     std::vector<float> fEnergy;
+
+    int fTimestampUnit{-1};    
+    double fTime{-1};
+
+    void UpdateTime() {
+      if(fTimestamp>=0 && fCfd>=0 && fTimestampUnit>=0 && fDetType<=10){ // TIGRESS fragments
+        fTime = double(fTimestamp & 0xfffffffffffc0000) * fTimestampUnit + double(fCfd + gRandom->Uniform()) / 1.6;
+      }
+      if(fTimestamp>=0 && fCfd==0 && fTimestampUnit>=0 && fDetType>=13 && fDetType<=14){ // EMMA fragments
+        fTime = double(fTimestamp+gRandom->Uniform()) * fTimestampUnit;
+      }
+      return;
+    }
 
   //ClassDef(Fragment,1);
 };

@@ -13,15 +13,8 @@ Fragment::~Fragment() { }
 //int Fragment::Unpack(char *data) {
 //unpacks assuming grf4 data format
 bool Fragment::Unpack(uint32_t *data,int &nwords) {
-  
-  //for(int i=0;i<nwords;i++) {
-  //  printf("%p ",(data+nwords));
-  //}
-  //printf("\n");
 
   int cword =0; // points to header;
-  //printf("%p \t %i\n",data,nwords);  
-  //return;
   uint32_t datum = *(data+cword);
   SetAddress((datum&0x000ffff0) >> 4);
   SetDetType((datum&0x0000000f) >> 0);
@@ -51,20 +44,8 @@ bool Fragment::Unpack(uint32_t *data,int &nwords) {
       datum = *(data+cword);
     }
   }
-
-  //for(int i=0;i<nwords;i++) {
-  //  printf("%p ",*(data+i));
-  //}
-  //printf("\n");
-
   datum = *(data+cword);
-  if((datum&0xf0000000)!=0xa0000000)  { return false;
-    //printf("bad first timestamp word! %p \n",datum);
-    //for(int i=0;i<nwords;i++) {
-    //  printf("%p ",*(data+i));
-    //}
-    //printf("\n");
-  }
+  if((datum&0xf0000000)!=0xa0000000)  { return false;}
   long timestamp = (datum & 0x0fffffff);
   cword+=1; //advance to vi
 
@@ -99,8 +80,7 @@ bool Fragment::Unpack(uint32_t *data,int &nwords) {
   tempInt += ((datum & 0x7fc00000) >> 22);
   AddInt(tempInt);
   AddCharge(tempChg);
-
-  //Print();
+  SetTimestampUnit(10);
   return true;
   //return bytes_processed;
 }

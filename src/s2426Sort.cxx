@@ -61,95 +61,72 @@ int main(int argc, char **argv) {
 
   int counter = 0;
   while(infile.Read(event)) {
-    //if(!event.GetEventId()&0xf000)
-    //event.Print();
+
     switch(event.GetEventId()) {
       case 1: { //trigger
-        Histogramer::Fill("EventTrigger",10,0,10,event.GetTriggerMask());
-        event.SetBankList();
-        //if(event.GetTriggerMask()==0) event.Print("all");
-        void *ptr;
-        int banksize;
+                event.SetBankList();
+                void *ptr;
+                int banksize;
 
-        long emmaAdcTimestamp = 0;
-        bool haveEmmaAdcTimestamp = false; 
+                long emmaAdcTimestamp = 0;
+                bool haveEmmaAdcTimestamp = false; 
 
-        if((banksize = event.LocateBank(nullptr, "GRF4", &ptr)) > 0) {
-          banksFound["GRIF4"]++;
-          MakeTigressFragments((uint32_t*)ptr,banksize); 
-        } 
-        if((banksize = event.LocateBank(nullptr, "MADC", &ptr)) > 0) {
-          banksFound["MADC"]++;     // adc
-          //printf(" ------------------------------------------ \n");
-          emmaAdcTimestamp = MakeEmmaADC((uint32_t*)ptr,banksize);
-          haveEmmaAdcTimestamp = (emmaAdcTimestamp > 0);
-        }
-        if((banksize = event.LocateBank(nullptr, "EMMT", &ptr)) > 0) {   // MADC and EMMT are nested.
-            banksFound["EMMT"]++;   // tdc
-            if(!haveEmmaAdcTimestamp) 
-              printf(RED "EMMA TDC without ADC" RESET_COLOR "\n");
-            MakeEmmaTDC((uint32_t*)ptr,banksize,emmaAdcTimestamp); 
-        }
-        break;
-      }
-        //event.Print("all");
-        //printf("\n------------------------------------------ \n\n");
-    case 2:  //scalar
-    case 5:  //epics
-      break;
-    case 0x8000: //BOR (odb)
-    case 0x8001: //EOR
-      event.Print();
-      break;
-    case 0x8002: //message Event;
-      break;
-  };
-  typeFound[event.GetEventId()]++;
-  counter++;
-  doStatus(infile);
+                if((banksize = event.LocateBank(nullptr, "GRF4", &ptr)) > 0) {
+                  banksFound["GRIF4"]++;
+                  MakeTigressFragments((uint32_t*)ptr,banksize); 
+                } 
+                if((banksize = event.LocateBank(nullptr, "MADC", &ptr)) > 0) {
+                  banksFound["MADC"]++;     // adc
+                  emmaAdcTimestamp = MakeEmmaADC((uint32_t*)ptr,banksize);
+                  haveEmmaAdcTimestamp = (emmaAdcTimestamp > 0);
+                }
+                if((banksize = event.LocateBank(nullptr, "EMMT", &ptr)) > 0) {   // MADC and EMMT are nested.
+                  banksFound["EMMT"]++;   // tdc
+                  if(!haveEmmaAdcTimestamp) 
+                    printf(RED "EMMA TDC without ADC" RESET_COLOR "\n");
+                  MakeEmmaTDC((uint32_t*)ptr,banksize,emmaAdcTimestamp); 
+                }
+                break;
+              }
+      case 2:  //scalar
+      case 5:  //epics
+              break;
+      case 0x8000: //BOR (odb)
+      case 0x8001: //EOR
+              event.Print();
+              break;
+      case 0x8002: //message Event;
+              break;
+    };
+    typeFound[event.GetEventId()]++;
+    counter++;
+    doStatus(infile);
 
-}
-doStatus(infile,true);
-//printf("Event info: %zu types\n",typeFound.size());
-//for(auto it : typeFound) { 
-//  printf("\t0x%08x: \t%i\n",it.first,it.second);
-//}
-//printf("Bank info:\n");
-//for(auto it : banksFound) { 
-//  printf("\t%s: \t%i\n",it.first.c_str(),it.second);
-//}
+  }
+  doStatus(infile,true);
+  printf("\nDraining queues...\n");
 
-//std::ofstream ofile("banks.txt");
-//for(auto it : banksFound) { 
-//  ofile << "Bank info:" << std::endl;
-//  ofile << "bank:  " << it.first.c_str() << std::endl;
-//  ofile << "count: " << it.second        << std::endl;
-//}
-//ofile.close();
+  EventBuilder::Get()->Flush();
 
-printf("\nDraining queues...\n");
+  while(EventBuilder::Get()->Size() > 0 || EventProcess::Get()->Size() > 0) {
+    doStatus(infile, true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
 
-EventBuilder::Get()->Flush();
+  EventBuilder::Get()->Stop();
+  EventProcess::Get()->Stop();
+  DetectorProcess::Get()->Stop();
 
-while(EventBuilder::Get()->Size() > 0 || EventProcess::Get()->Size() > 0) {
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+  printf("\nFinal status:\n");
   doStatus(infile, true);
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+  gHist->Close();
+  return 0;
 }
 
-EventBuilder::Get()->Stop();
-EventProcess::Get()->Stop();
-DetectorProcess::Get()->Stop();
-
-std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-printf("\nFinal status:\n");
-doStatus(infile, true);
-
-gHist->Close();
-return 0;
-}
-
-
+// =================================================================================== //
 void doStatus(TMidasFile &infile, bool forcePrint) {
 
   if((std::chrono::steady_clock::now()-lastPrint) > interval) forcePrint=true;
@@ -168,23 +145,23 @@ void doStatus(TMidasFile &infile, bool forcePrint) {
   if(doneReading) {
     printf("\n");
     printf(" %lld s  read %.02f / %.02f MB  %.1f%%  %.2f MB/s\n",
-           timeEllapsed.count(), readMB, totalMB, 100.0*frac, rate);
+        timeEllapsed.count(), readMB, totalMB, 100.0*frac, rate);
 
     printf("\t EventBuilder[%s] Q[%u] fragments_in[%u] built_events_out[%u]\n",
-           EventBuilder::Get()->Running() ? "on" : "off",
-           EventBuilder::Get()->Size(),
-           EventBuilder::Get()->Pushed(),
-           EventBuilder::Get()->Popped());
+        EventBuilder::Get()->Running() ? "on" : "off",
+        EventBuilder::Get()->Size(),
+        EventBuilder::Get()->Pushed(),
+        EventBuilder::Get()->Popped());
 
     printf("\t EventProcess [%s] Q[%u] detector_events_ready[%u] built_events_in[%u]\n",
-           EventProcess::Get()->Running() ? "on" : "off",
-           EventProcess::Get()->Size(),
-           EventProcess::Get()->Size(),
-           EventProcess::Get()->Pushed());
+        EventProcess::Get()->Running() ? "on" : "off",
+        EventProcess::Get()->Size(),
+        EventProcess::Get()->Size(),
+        EventProcess::Get()->Pushed());
 
     printf("\t DetectorProcess[%s] detector_events_done[%u]\n",
-           DetectorProcess::Get()->Running() ? "on" : "off",
-           DetectorProcess::Get()->Pushed());
+        DetectorProcess::Get()->Running() ? "on" : "off",
+        DetectorProcess::Get()->Pushed());
 
     fflush(stdout);
     return;
@@ -192,29 +169,29 @@ void doStatus(TMidasFile &infile, bool forcePrint) {
 
   printf(CLEAR_LINE);
   printf(" %lld s  read %.02f / %.02f MB  %.1f%%  %.2f MB/s\r",
-         timeEllapsed.count(), readMB, totalMB, 100.0*frac, rate);
+      timeEllapsed.count(), readMB, totalMB, 100.0*frac, rate);
 
   printf(CURSOR_DOWN);
   printf(CLEAR_LINE);
   printf("\t EventBuilder[%s] Q[%u] fragments_in[%u] built_events_out[%u]\r",
-         EventBuilder::Get()->Running() ? "on" : "off",
-         EventBuilder::Get()->Size(),
-         EventBuilder::Get()->Pushed(),
-         EventBuilder::Get()->Popped());
+      EventBuilder::Get()->Running() ? "on" : "off",
+      EventBuilder::Get()->Size(),
+      EventBuilder::Get()->Pushed(),
+      EventBuilder::Get()->Popped());
 
   printf(CURSOR_DOWN);
   printf(CLEAR_LINE);
   printf("\t EventProcess [%s] Q[%u] detector_events_ready[%u] built_events_in[%u]\r",
-         EventProcess::Get()->Running() ? "on" : "off",
-         EventProcess::Get()->Size(),
-         EventProcess::Get()->Size(),
-         EventProcess::Get()->Pushed());
+      EventProcess::Get()->Running() ? "on" : "off",
+      EventProcess::Get()->Size(),
+      EventProcess::Get()->Size(),
+      EventProcess::Get()->Pushed());
 
   printf(CURSOR_DOWN);
   printf(CLEAR_LINE);
   printf("\t DetectorProcess[%s] detector_events_done[%u]\r",
-         DetectorProcess::Get()->Running() ? "on" : "off",
-         DetectorProcess::Get()->Pushed());
+      DetectorProcess::Get()->Running() ? "on" : "off",
+      DetectorProcess::Get()->Pushed());
 
   printf(CURSOR_UP);
   printf(CURSOR_UP);
@@ -224,7 +201,7 @@ void doStatus(TMidasFile &infile, bool forcePrint) {
 }
 
 
-
+// =================================================================================== //
 long MakeEmmaADC(uint32_t* pdata,int size) {
   //printf("MADC, size = %i:\n",size);
   long timestamp=0;
@@ -259,18 +236,9 @@ long MakeEmmaADC(uint32_t* pdata,int size) {
           lastGoodTimestamp = timestamp;
           frag.get()->SetCfd(0);             
           frag.get()->SetFilterPattern(0);   
-          frag.get()->SetPileup(0);          
-          frag.get()->SetDetType(12);
-
-          //printf("EMMA ADC\n");
-          int c     = frag.get()->Address()&0xff;
-          float chg = frag.get()->Charge(); 
-          //frag.get()->Print();
-          Histogramer::Get()->Fill("eADC",4000,0,64000,chg,
-              1000,0,1000,c);
-
-          //printf(DBLUE "%lu " RESET_COLOR "\n",frag->Timestamp());
-
+          frag.get()->SetPileup(0);
+          frag.get()->SetTimestampUnit(50);          
+          frag.get()->SetDetType(13);
           EventBuilder::Get()->push(std::move(frag));
         }
         break;   
@@ -288,27 +256,14 @@ long MakeEmmaADC(uint32_t* pdata,int size) {
 static uint32_t wraparoundcounter = 0; //0xffffffff; // Needed for bad data at start of run before GRIFFIN starts
 static uint32_t lasttimestamp = 0;     // "last" time stamp for simple wraparound algorightm 
 static uint32_t countsbetweenwraps; // number of counts between wraparounds
-
+// ======================================================================== //
 void MakeEmmaTDC(uint32_t* pdata ,int size, long adcTimestamp) {
-  //printf("MTDC, size = %i:\n",size);
-  //long timestamp=0;
-  //std::vector<uint32_t> addresses;
-  //std::vector<uint32_t> charges;
-  //uint32_t tmpAddress=0;
-
   uint32_t tmpTimestamp = 0;
   uint32_t tmpAddress   = 0;
   Long64_t ts           = 0;
 
   std::vector<uint32_t> addresses;
   std::vector<uint32_t> charges;
-
-  //for(int i=0;i<size;i++) {
-  //  printf("0x%08x ",*(pdata+i));
-  //  if(i && (i%8)==0) printf("\n");
-  //}
-  //printf("\n\n");
-
 
   for(int x=0;x<size;x++) {  
     uint32_t datum = *(pdata+x);  
@@ -321,12 +276,8 @@ void MakeEmmaTDC(uint32_t* pdata ,int size, long adcTimestamp) {
         tmpAddress = (datum>>16)&0x300; 
         break;
       case 0x0:  //tdc measurement
-        { 
-          int c = ((datum >> 19) & 0xff ); 
-          //printf("tdc: 0x%08x\t%i\n",c,c);
-        }  
-        addresses.push_back(0x900000 + ((datum >> 19) & 0xff ) );  
-        charges.push_back(datum & 0x7ffff);
+        addresses.push_back((datum >> 21) & 0x1f);  
+        charges.push_back(datum & 0x1fffff);
         break;
       case 0x3:  //tdc trailer
         break;
@@ -347,16 +298,7 @@ void MakeEmmaTDC(uint32_t* pdata ,int size, long adcTimestamp) {
         ts = (ts * 5) >> 1;
 
         for (size_t i = 0; i < addresses.size(); ++i) {
-          // optional duplicate check, mirroring GH:
           bool duped = false;
-          //for (size_t j = 0; j < i; ++j) {
-          //  if (addresses[i] == addresses[j]) {
-          //    duped = true;
-          //    break;
-          //  }
-          //}
-          //if (duped) continue;
-
           std::unique_ptr<Fragment> frag = std::make_unique<Fragment>();
           frag.get()->AddCharge(charges.at(i));
           frag.get()->AddInt(5);
@@ -365,17 +307,8 @@ void MakeEmmaTDC(uint32_t* pdata ,int size, long adcTimestamp) {
           frag.get()->SetCfd(0);             
           frag.get()->SetFilterPattern(0);
           frag.get()->SetPileup(0);
-          frag.get()->SetDetType(13);
-
-
-          int c     = frag.get()->Address()&0xff;
-          float chg = frag.get()->Charge(); 
-          Histogramer::Get()->Fill("eTDC",4000,0,64000,chg,
-              1000,0,1000,c);
-
-          //printf("EMMA TDC\n");
-          //frag.get()->Print();
-          //printf(DRED "%lu " RESET_COLOR "\n",frag->Timestamp());
+          frag.get()->SetDetType(14);
+          frag.get()->SetTimestampUnit(50);
           EventBuilder::Get()->push(std::move(frag));
         }
         addresses.clear();
@@ -397,7 +330,6 @@ void MakeTigressFragments(uint32_t *pdata,int size) {
   uint32_t *pStart = 0; 
   uint32_t *pEnd   = 0;
   while(words<size) {
-    //printf("%p \n",*(pdata+words));
     if((*(pdata+words)&0xf0000000)==0x80000000)
       pStart = pdata+words;
     if((*(pdata+words)&0xf0000000)==0xe0000000)
@@ -405,26 +337,11 @@ void MakeTigressFragments(uint32_t *pdata,int size) {
     if(pStart!=0 && pEnd!=0) {
       counter++;
       int nwords = int(pEnd-pStart);
-      //processGRF4(pStart,nwords);
       std::unique_ptr<Fragment> frag = std::make_unique<Fragment>();
-      //printf("%p \t %i\n",pStart,nwords);
       int i=0;
-      //while(i<nwords) {
-      //  printf("0x%08x\t",*(pStart+i));
-      //  i++;
-      //  if(i!=0)
-      //    if((i%8)==0)
-      //      printf("\n");
-      //}
-      //printf("\n");
       if(frag.get()->Unpack(pStart,nwords)) {
         good++;
-        //for(number oif pileupes)
-        //  Histogramer::Fill("something",70,0,70,frag.get()->GetNumber(i),8000,0,64000,frag.get()->GetCharge(i)
-        //        frag.get()->Print();
-
-        //printf(DYELLOW "%lu " RESET_COLOR "\n",frag->Timestamp());
-
+        Histogramer::Fill("GRF4","DetType",20,0,20,frag.get()->DetType());
         EventBuilder::Get()->push(std::move(frag));
       } else {
         bad++;
@@ -434,9 +351,6 @@ void MakeTigressFragments(uint32_t *pdata,int size) {
     }
     words+=1;
   }
-  //printf("found %i frags\n",counter);
-  //printf("\tgood: %i frags\n",good);
-  //printf("\tbad: %i frags\n",bad);
 }
 
 
