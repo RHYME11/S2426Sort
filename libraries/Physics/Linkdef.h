@@ -3,6 +3,7 @@
 #pragma link off all class;
 
 #pragma link C++ class EmmaHit+;
+#pragma link C++ class std::vector<EmmaHit>+;
 #pragma link C++ class Emma+;
 
 

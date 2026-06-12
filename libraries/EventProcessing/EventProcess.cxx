@@ -77,13 +77,11 @@ void EventProcess::loop() {
           event.tigress->fCoreHits.emplace_back(*frag);
           break;
         case 13: // EMMA ADC
-          event.emma->fADC.emplace_back(*frag);
+          event.emma->AddADC(*frag);
           break;
-
         case 14: // EMMA TDC
-          event.emma->fTDC.emplace_back(*frag);
+          event.emma->AddTDC(*frag);
           break;
-
         default:
           break;
 
@@ -96,4 +94,3 @@ void EventProcess::loop() {
     push(std::move(event));
   }
 }
-

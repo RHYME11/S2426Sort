@@ -17,9 +17,8 @@ root_generate_dictionary(G__PHYSICS
   LINKDEF Linkdef.h
 )
 
-target_link_libraries(PHYSICS PRIVATE ${ROOT_LIBRARIES})
+target_link_libraries(PHYSICS PRIVATE TMIDAS CHANNEL ${ROOT_LIBRARIES})
 
 #link the compiled libraries above to the final executable.
 target_link_libraries(s2426Sort PRIVATE PHYSICS)        
-
 

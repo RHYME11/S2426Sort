@@ -71,7 +71,7 @@ void DetectorProcess::loop() {
 
     if(event.emma) {
       if(!event.emma->empty()) {
-        Histogramer::Fill("emma_adc_tdc_time", 1000, -1000, 1000, event.emma->fADCTime - event.emma->fTDCTime);
+        Histogramer::Fill("emma_adc_tdc_time", 1000, -1000, 1000, event.emma->ADCTime() - event.emma->TDCTime());
       }
     }
 
@@ -81,12 +81,11 @@ void DetectorProcess::loop() {
     
     if(event.tigress && event.emma) {
       for(auto& current: event.tigress->fCoreHits) {
-        Histogramer::Fill("emma_tig_dt",2000,-10000,10000,event.emma->fADCTime - current.TimestampNs());
+        Histogramer::Fill("emma_tig_dt",2000,-10000,10000,event.emma->ADCTime() - current.TimestampNs());
       }
     }
   }
 }
-
 
 
 
