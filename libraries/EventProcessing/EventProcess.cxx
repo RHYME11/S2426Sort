@@ -74,20 +74,13 @@ void EventProcess::loop() {
       Histogramer::Fill("DetectorType",100,0,100,frag->DetType());
       switch(frag->DetType()){
         case 0: // TIGRESS core
-          //printf(DYELLOW "TIGRESS %lu " RESET_COLOR "\n",
-          //       builtfrags.at(i)->Timestamp());
-          //cores.push_back(std::move(builtfrags.at(i)));
           event.tigress->fCoreHits.emplace_back(*frag);
           break;
-        case 12: // EMMA ADC
-          //printf(DBLUE "EMMA_ADC %lu " RESET_COLOR "\n",
-          //       builtfrags.at(i)->Timestamp());
+        case 13: // EMMA ADC
           event.emma->fADC.emplace_back(*frag);
           break;
 
-        case 13: // EMMA TDC
-          //printf(DRED "EMMA_TDC %lu " RESET_COLOR "\n",
-          //       builtfrags.at(i)->Timestamp());
+        case 14: // EMMA TDC
           event.emma->fTDC.emplace_back(*frag);
           break;
 
