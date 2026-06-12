@@ -50,12 +50,12 @@ class EventBuilder {
   private:
     static EventBuilder *fEventBuilder;
 
-    long fLastTimestamp{-1};
+    long fLastTimestampNs{-1};
     long fLatestTimestampNsSeen{0};
     std::atomic_bool fFlushing{false};
 
-    static constexpr long BUILD_WINDOW  = 10000;
-    static constexpr long REORDER_SLACK = 500000000;
+    static constexpr long BUILD_WINDOW_NS  = 10000;
+    static constexpr long REORDER_SLACK_NS = 500000000;
 
     mutable std::mutex fMutex;
     std::multimap<long, std::unique_ptr<Fragment>> fQueue;

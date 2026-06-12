@@ -43,7 +43,7 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
   const long firstTime = fQueue.begin()->first;
 
 if(!fFlushing) {
-    const long safeTime = fLatestTimestampNsSeen - BUILD_WINDOW - REORDER_SLACK;
+    const long safeTime = fLatestTimestampNsSeen - BUILD_WINDOW_NS - REORDER_SLACK_NS;
 
     if(firstTime > safeTime) {
       return false;
@@ -55,7 +55,7 @@ if(!fFlushing) {
   while(it != fQueue.end()) {
     const long thisTime = it->first;
 
-    if(std::labs(thisTime - firstTime) > BUILD_WINDOW) {
+    if(std::labs(thisTime - firstTime) > BUILD_WINDOW_NS) {
       break;
     }
 

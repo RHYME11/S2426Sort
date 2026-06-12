@@ -51,10 +51,7 @@ class Fragment {
     std::string Name() const { return   Channel::Get(fAddress)->Name(); }  
 
     bool operator<(const Fragment& other) const { 
-      //if(timestamp != other.timestamp) 
-        return fTimestamp>other.fTimestamp;
-      //return timestamp;
-      //return seq<other.seq; 
+      return TimestampNs() > other.TimestampNs();
     }
 
 
