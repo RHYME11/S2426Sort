@@ -157,7 +157,8 @@ where:
 BUILD_WINDOW_NS = 10000;
 ```
 
-Before flushing, the builder also waits for reorder slack:
+During normal sorting, the builder keeps the queue deep enough to allow
+out-of-order fragments to be reordered before an event is released:
 
 ```cpp
 safeTime = fLatestTimestampNsSeen - BUILD_WINDOW_NS - REORDER_SLACK_NS;
@@ -165,14 +166,18 @@ REORDER_SLACK_NS = 500000000;
 ```
 
 If the earliest fragment is newer than `safeTime`, the group is not released yet.
+This delay is not the flushing rule; it is the reorder-depth rule. It ensures
+the container has seen enough later timestamps before deciding that the earliest
+fragment can be safely grouped and popped.
+
 At the end of the input file, `main()` calls:
 
 ```cpp
 EventBuilder::Get()->Flush();
 ```
 
-After flushing, the builder releases remaining fragments without waiting for
-future timestamps.
+The flush call is only used at end-of-file to release remaining fragments once
+there will be no future timestamps.
 
 ## Fragment Class
 
