@@ -34,6 +34,25 @@ void EventBuilder::push(std::unique_ptr<Fragment> frag) {
   fPushed++;
 }
 
+// ============== pushBatch ==============
+// Purpose: Atomically submit fragments from one complete MIDAS event.
+// Inputs: Fragments decoded from one MIDAS event.
+// Outputs: Fragments inserted into the timestamp-ordered queue.
+void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
+  if(fragments.empty()) return;
+  std::lock_guard<std::mutex> lk(fMutex);
+
+  for(auto& frag : fragments) {
+    if(!frag) continue;
+
+    const long ts = frag->TimestampNs();
+    if(ts > fLatestTimestampNsSeen) fLatestTimestampNsSeen = ts;
+
+    fQueue.emplace(ts,std::move(frag));
+    fPushed++;
+  }
+}
+
 
 bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
   std::lock_guard<std::mutex> lk(fMutex);
@@ -57,25 +76,6 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
     if(std::labs(thisTime - firstTime) > BUILD_WINDOW_NS) {
       break;
     }
-// ========================= Begin ()================================ //
-    if(it->second.get()->DetType()==13){
-      int channel = it->second.get()->Address() & 0xff;
-      if(channel==3){
-        if(fLastSiTimestampNs>=0){
-          long tdif = thisTime - fLastSiTimestampNs;
-          Histogramer::Fill("Fragments","tdif_Si",1e8,0,1e9,tdif);
-        }
-        fLastSiTimestampNs = thisTime;
-      }
-      if(channel==16){
-        if(fLastIC1TimestampNs>=0){
-          long tdif = thisTime - fLastIC1TimestampNs;
-          Histogramer::Fill("Fragments","tdif_IC1",1e8,0,1e9,tdif);
-        }
-        fLastIC1TimestampNs = thisTime;
-      }
-    }
-// ==========================End () ========================= //
     Builtfrags.emplace_back(std::move(it->second));
     it = fQueue.erase(it);
   }

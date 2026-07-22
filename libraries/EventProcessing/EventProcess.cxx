@@ -36,6 +36,7 @@ EventProcess::~EventProcess() {
 void EventProcess::push(DetectorEvent event) {
   std::lock_guard<std::mutex> lk(fMutex);
   fQueue.push(std::move(event));
+  fPushed++;
 }
 
 bool EventProcess::pop(DetectorEvent& event) {
@@ -44,6 +45,7 @@ bool EventProcess::pop(DetectorEvent& event) {
 
   event = std::move(fQueue.front());
   fQueue.pop();
+  fPopped++;
   return true;
 }
 

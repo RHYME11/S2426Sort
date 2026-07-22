@@ -29,6 +29,7 @@ class EventBuilder {
     static EventBuilder *Get();
 
     void push(std::unique_ptr<Fragment> frag);
+    void pushBatch(std::vector<std::unique_ptr<Fragment>> fragments);
     bool pop(std::vector<std::unique_ptr<Fragment> > &Builtfrags);  
     void loop(); // monitor the queue and decide when to do useful things.
 
@@ -66,10 +67,6 @@ class EventBuilder {
 
     std::atomic_bool fStop{false};
     std::thread fWorker;
-// ========================= Begin ()================================ //
-    long fLastSiTimestampNs{-1};
-    long fLastIC1TimestampNs{-1};
-// ==========================End () ========================= //
 };
 
 

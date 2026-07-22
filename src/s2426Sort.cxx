@@ -1,6 +1,8 @@
 
 #include<cstdio>
 #include<chrono>
+#include<memory>
+#include<vector>
 
 #include <TMidasBanks.h>
 #include <TMidasFile.h>
@@ -20,9 +22,9 @@
 
 using namespace std;
 
-void MakeTigressFragments(uint32_t*,int);
-long MakeEmmaADC(uint32_t*,int);
-void MakeEmmaTDC(uint32_t*,int,long);
+void MakeTigressFragments(uint32_t*,int,std::vector<std::unique_ptr<Fragment>>&);
+long MakeEmmaADC(uint32_t*,int,std::vector<std::unique_ptr<Fragment>>&);
+void MakeEmmaTDC(uint32_t*,int,long,std::vector<std::unique_ptr<Fragment>>&);
 
 
 void doStatus(TMidasFile&,bool forcePrint=false);
@@ -70,24 +72,23 @@ int main(int argc, char **argv) {
 
                 long emmaAdcTimestamp = 0;
                 bool haveEmmaAdcTimestamp = false; 
-// ============================ begin =============================================//
-                printf("===========================Count: %i ==============================\n",counter);
-// ============================ end =============================================//
+                std::vector<std::unique_ptr<Fragment>> fragments;
                 if((banksize = event.LocateBank(nullptr, "GRF4", &ptr)) > 0) {
                   banksFound["GRIF4"]++;
-                  MakeTigressFragments((uint32_t*)ptr,banksize); 
+                  MakeTigressFragments((uint32_t*)ptr,banksize,fragments); 
                 } 
                 if((banksize = event.LocateBank(nullptr, "MADC", &ptr)) > 0) {
                   banksFound["MADC"]++;     // adc
-                  emmaAdcTimestamp = MakeEmmaADC((uint32_t*)ptr,banksize);
+                  emmaAdcTimestamp = MakeEmmaADC((uint32_t*)ptr,banksize,fragments);
                   haveEmmaAdcTimestamp = (emmaAdcTimestamp > 0);
                 }
                 if((banksize = event.LocateBank(nullptr, "EMMT", &ptr)) > 0) {   // MADC and EMMT are nested.
                   banksFound["EMMT"]++;   // tdc
                   if(!haveEmmaAdcTimestamp) 
                     printf(RED "EMMA TDC without ADC" RESET_COLOR "\n");
-                  MakeEmmaTDC((uint32_t*)ptr,banksize,emmaAdcTimestamp); 
+                  MakeEmmaTDC((uint32_t*)ptr,banksize,emmaAdcTimestamp,fragments); 
                 }
+                EventBuilder::Get()->pushBatch(std::move(fragments));
                 break;
               }
       case 2:  //scalar
@@ -103,10 +104,6 @@ int main(int argc, char **argv) {
     typeFound[event.GetEventId()]++;
     counter++;
     doStatus(infile);
-// ============================ begin =============================================//
-    if(counter>10) break;
-// ============================ end =============================================//
-
   }
   doStatus(infile,true);
   printf("\nDraining queues...\n");
@@ -158,11 +155,11 @@ void doStatus(TMidasFile &infile, bool forcePrint) {
         EventBuilder::Get()->Pushed(),
         EventBuilder::Get()->Popped());
 
-    printf("\t EventProcess [%s] Q[%u] detector_events_ready[%u] built_events_in[%u]\n",
+    printf("\t EventProcess [%s] Q[%u] built_events_in[%u] detector_events_out[%u]\n",
         EventProcess::Get()->Running() ? "on" : "off",
         EventProcess::Get()->Size(),
-        EventProcess::Get()->Size(),
-        EventProcess::Get()->Pushed());
+        EventProcess::Get()->Pushed(),
+        EventProcess::Get()->Popped());
 
     printf("\t DetectorProcess[%s] detector_events_done[%u]\n",
         DetectorProcess::Get()->Running() ? "on" : "off",
@@ -206,8 +203,12 @@ void doStatus(TMidasFile &infile, bool forcePrint) {
 }
 
 
-// =========================== MakeEmmaADC ===================================== //
-long MakeEmmaADC(uint32_t* pdata,int size) {
+// ============== MakeEmmaADC ==============
+// Purpose: Decode MADC fragments into the current MIDAS event batch.
+// Inputs: MADC words, word count, and destination fragment vector.
+// Outputs: Last valid ADC timestamp and decoded fragments in the vector.
+long MakeEmmaADC(uint32_t* pdata,int size,
+    std::vector<std::unique_ptr<Fragment>>& fragments) {
   //printf("MADC, size = %i:\n",size);
   long timestamp=0;
   long lastGoodTimestamp=0;
@@ -243,11 +244,7 @@ long MakeEmmaADC(uint32_t* pdata,int size) {
           frag.get()->SetPileup(0);
           frag.get()->SetDetType(13);
           frag.get()->SetTimestampUnit(50);          
-// ============================ begin =============================================//
-          //cout<< "ADC.channel: " << frag.get()->Number() << endl;
-          //cout<< "ADC.timestampNs: " << frag.get()->TimestampNs() << endl;
-// ============================ end =============================================//
-          EventBuilder::Get()->push(std::move(frag));
+          fragments.emplace_back(std::move(frag));
         }
         break;   
       default:  
@@ -261,8 +258,12 @@ long MakeEmmaADC(uint32_t* pdata,int size) {
 static uint32_t wraparoundcounter = 0; //0xffffffff; // Needed for bad data at start of run before GRIFFIN starts
 static uint32_t lasttimestamp = 0;     // "last" time stamp for simple wraparound algorightm 
 static uint32_t countsbetweenwraps; // number of counts between wraparounds
-// =========================== MakeEmmaTDC ====================================== //
-void MakeEmmaTDC(uint32_t* pdata ,int size, long adcTimestamp) {
+// ============== MakeEmmaTDC ==============
+// Purpose: Decode EMMT fragments into the current MIDAS event batch.
+// Inputs: EMMT words, word count, ADC timestamp, and destination vector.
+// Outputs: Decoded fragments appended to the vector.
+void MakeEmmaTDC(uint32_t* pdata,int size,long adcTimestamp,
+    std::vector<std::unique_ptr<Fragment>>& fragments) {
   uint32_t tmpTimestamp = 0;
   uint32_t tmpAddress   = 0;
   Long64_t ts           = 0;
@@ -319,14 +320,7 @@ void MakeEmmaTDC(uint32_t* pdata ,int size, long adcTimestamp) {
           float chg = frag.get()->Charge(); 
           Histogramer::Get()->Fill("eTDC",4000,0,64000,chg,
               1000,0,1000,c);
-// ============================ begin =============================================//
-          //cout<< "TDC.channel: " << c << endl;
-          //cout<< "TDC.size: " << addresses.size() << endl;
-          //cout<< "TDC.timestampNs: " << frag.get()->TimestampNs() << endl;
-          //cout<< "TDC.cahrge: " << charges.at(i) << endl;
-// ============================ end =============================================//
-
-          EventBuilder::Get()->push(std::move(frag));
+          fragments.emplace_back(std::move(frag));
         }
         addresses.clear();
         charges.clear();
@@ -339,8 +333,12 @@ void MakeEmmaTDC(uint32_t* pdata ,int size, long adcTimestamp) {
   }
 }
 
-// =========================== MakeTigressFragments ====================================== //
-void MakeTigressFragments(uint32_t *pdata,int size) { 
+// ============== MakeTigressFragments ==============
+// Purpose: Decode GRF4 fragments into the current MIDAS event batch.
+// Inputs: GRF4 words, word count, and destination fragment vector.
+// Outputs: Decoded fragments appended to the vector.
+void MakeTigressFragments(uint32_t *pdata,int size,
+    std::vector<std::unique_ptr<Fragment>>& fragments) { 
   int words=0;
   int counter=0;
   int good=0;
@@ -359,11 +357,8 @@ void MakeTigressFragments(uint32_t *pdata,int size) {
       int i=0;
       if(frag.get()->Unpack(pStart,nwords)) {
         good++;
-// ============================ begin =============================================//
-        cout<< "TIG.name:" << frag.get()->Name() << endl;
-// ============================ end =============================================//
         Histogramer::Fill("GRF4","DetType",20,0,20,frag.get()->DetType());
-        EventBuilder::Get()->push(std::move(frag));
+        fragments.emplace_back(std::move(frag));
       } else {
         bad++;
       }
@@ -373,7 +368,6 @@ void MakeTigressFragments(uint32_t *pdata,int size) {
     words+=1;
   }
 }
-
 
 
 
