@@ -308,7 +308,7 @@ void MakeEmmaTDC(uint32_t* pdata,int size,long adcTimestamp,
           std::unique_ptr<Fragment> frag = std::make_unique<Fragment>();
           frag.get()->AddCharge(charges.at(i));
           frag.get()->AddInt(5);
-          frag.get()->SetAddress(addresses.at(i));
+          frag.get()->SetAddress(0x00900000 + addresses.at(i)); // "0x00900000 + " in order to match address in calibration file
           frag.get()->SetTimestamp(adcTimestamp);
           frag.get()->SetCfd(0);             
           frag.get()->SetFilterPattern(0);
