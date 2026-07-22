@@ -54,7 +54,7 @@ class EventBuilder {
     long fLatestTimestampNsSeen{0};
     std::atomic_bool fFlushing{false};
 
-    static constexpr long BUILD_WINDOW_NS  = 10000;
+    static constexpr long BUILD_WINDOW_NS  = 5000;
     static constexpr long REORDER_SLACK_NS = 500000000;
 
     mutable std::mutex fMutex;
@@ -66,6 +66,10 @@ class EventBuilder {
 
     std::atomic_bool fStop{false};
     std::thread fWorker;
+// ========================= Begin ()================================ //
+    long fLastSiTimestampNs{-1};
+    long fLastIC1TimestampNs{-1};
+// ==========================End () ========================= //
 };
 
 

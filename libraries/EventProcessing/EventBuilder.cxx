@@ -1,6 +1,6 @@
 
 #include<EventBuilder.h>
-
+#include<Histogramer.h>
 #include <globals.h>
 
 EventBuilder *EventBuilder::fEventBuilder = 0;
@@ -42,7 +42,7 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
 
   const long firstTime = fQueue.begin()->first;
 
-if(!fFlushing) {
+  if(!fFlushing) {
     const long safeTime = fLatestTimestampNsSeen - BUILD_WINDOW_NS - REORDER_SLACK_NS;
 
     if(firstTime > safeTime) {
@@ -51,14 +51,31 @@ if(!fFlushing) {
   }
 
   auto it = fQueue.begin();
-
   while(it != fQueue.end()) {
     const long thisTime = it->first;
 
     if(std::labs(thisTime - firstTime) > BUILD_WINDOW_NS) {
       break;
     }
-
+// ========================= Begin ()================================ //
+    if(it->second.get()->DetType()==13){
+      int channel = it->second.get()->Address() & 0xff;
+      if(channel==3){
+        if(fLastSiTimestampNs>=0){
+          long tdif = thisTime - fLastSiTimestampNs;
+          Histogramer::Fill("Fragments","tdif_Si",1e8,0,1e9,tdif);
+        }
+        fLastSiTimestampNs = thisTime;
+      }
+      if(channel==16){
+        if(fLastIC1TimestampNs>=0){
+          long tdif = thisTime - fLastIC1TimestampNs;
+          Histogramer::Fill("Fragments","tdif_IC1",1e8,0,1e9,tdif);
+        }
+        fLastIC1TimestampNs = thisTime;
+      }
+    }
+// ==========================End () ========================= //
     Builtfrags.emplace_back(std::move(it->second));
     it = fQueue.erase(it);
   }

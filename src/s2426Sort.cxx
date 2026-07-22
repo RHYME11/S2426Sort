@@ -18,6 +18,8 @@
 
 #include <coreMap.h>
 
+using namespace std;
+
 void MakeTigressFragments(uint32_t*,int);
 long MakeEmmaADC(uint32_t*,int);
 void MakeEmmaTDC(uint32_t*,int,long);
@@ -68,7 +70,9 @@ int main(int argc, char **argv) {
 
                 long emmaAdcTimestamp = 0;
                 bool haveEmmaAdcTimestamp = false; 
-
+// ============================ begin =============================================//
+                printf("===========================Count: %i ==============================\n",counter);
+// ============================ end =============================================//
                 if((banksize = event.LocateBank(nullptr, "GRF4", &ptr)) > 0) {
                   banksFound["GRIF4"]++;
                   MakeTigressFragments((uint32_t*)ptr,banksize); 
@@ -99,6 +103,9 @@ int main(int argc, char **argv) {
     typeFound[event.GetEventId()]++;
     counter++;
     doStatus(infile);
+// ============================ begin =============================================//
+    if(counter>10) break;
+// ============================ end =============================================//
 
   }
   doStatus(infile,true);
@@ -199,7 +206,7 @@ void doStatus(TMidasFile &infile, bool forcePrint) {
 }
 
 
-// =================================================================================== //
+// =========================== MakeEmmaADC ===================================== //
 long MakeEmmaADC(uint32_t* pdata,int size) {
   //printf("MADC, size = %i:\n",size);
   long timestamp=0;
@@ -236,16 +243,17 @@ long MakeEmmaADC(uint32_t* pdata,int size) {
           frag.get()->SetPileup(0);
           frag.get()->SetDetType(13);
           frag.get()->SetTimestampUnit(50);          
+// ============================ begin =============================================//
+          //cout<< "ADC.channel: " << frag.get()->Number() << endl;
+          //cout<< "ADC.timestampNs: " << frag.get()->TimestampNs() << endl;
+// ============================ end =============================================//
           EventBuilder::Get()->push(std::move(frag));
         }
         break;   
       default:  
         break;
     }
-    //printf("0x%08x ",*(pdata+i));
-    //if(i && (i%8)==0) printf("\n");
   }
-  //printf("\n");
   return lastGoodTimestamp;
 }
 
@@ -253,7 +261,7 @@ long MakeEmmaADC(uint32_t* pdata,int size) {
 static uint32_t wraparoundcounter = 0; //0xffffffff; // Needed for bad data at start of run before GRIFFIN starts
 static uint32_t lasttimestamp = 0;     // "last" time stamp for simple wraparound algorightm 
 static uint32_t countsbetweenwraps; // number of counts between wraparounds
-// ======================================================================== //
+// =========================== MakeEmmaTDC ====================================== //
 void MakeEmmaTDC(uint32_t* pdata ,int size, long adcTimestamp) {
   uint32_t tmpTimestamp = 0;
   uint32_t tmpAddress   = 0;
@@ -311,6 +319,12 @@ void MakeEmmaTDC(uint32_t* pdata ,int size, long adcTimestamp) {
           float chg = frag.get()->Charge(); 
           Histogramer::Get()->Fill("eTDC",4000,0,64000,chg,
               1000,0,1000,c);
+// ============================ begin =============================================//
+          //cout<< "TDC.channel: " << c << endl;
+          //cout<< "TDC.size: " << addresses.size() << endl;
+          //cout<< "TDC.timestampNs: " << frag.get()->TimestampNs() << endl;
+          //cout<< "TDC.cahrge: " << charges.at(i) << endl;
+// ============================ end =============================================//
 
           EventBuilder::Get()->push(std::move(frag));
         }
@@ -325,6 +339,7 @@ void MakeEmmaTDC(uint32_t* pdata ,int size, long adcTimestamp) {
   }
 }
 
+// =========================== MakeTigressFragments ====================================== //
 void MakeTigressFragments(uint32_t *pdata,int size) { 
   int words=0;
   int counter=0;
@@ -344,6 +359,9 @@ void MakeTigressFragments(uint32_t *pdata,int size) {
       int i=0;
       if(frag.get()->Unpack(pStart,nwords)) {
         good++;
+// ============================ begin =============================================//
+        cout<< "TIG.name:" << frag.get()->Name() << endl;
+// ============================ end =============================================//
         Histogramer::Fill("GRF4","DetType",20,0,20,frag.get()->DetType());
         EventBuilder::Get()->push(std::move(frag));
       } else {

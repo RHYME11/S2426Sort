@@ -101,6 +101,9 @@ void DetectorProcess::loop() {
       Histogramer::Fill("Emma_Tig","IC2 Size"  ,10,0,10,event.emma->IC2().size());
       Histogramer::Fill("Emma_Tig","IC3 Size"  ,10,0,10,event.emma->IC3().size());
       Histogramer::Fill("Emma_Tig","IC4 Size"  ,10,0,10,event.emma->IC4().size());
+      if(event.emma->Si().size()>0){
+        Histogramer::Fill("Emma_Tig/Si_triggered", "Anode Size", 10,0,10,event.emma->Anodes().size());
+      }
     }
   }
 }
