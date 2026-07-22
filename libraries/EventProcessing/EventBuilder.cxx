@@ -51,6 +51,8 @@ void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
     fQueue.emplace(ts,std::move(frag));
     fPushed++;
   }
+
+
 }
 
 
@@ -76,6 +78,32 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
     if(std::labs(thisTime - firstTime) > BUILD_WINDOW_NS) {
       break;
     }
+// =================== begin ===================== //
+    int number = it->second.get()->Number();
+    if(number == 849){
+      if(it->second.get()->Energy()<2000){
+        fLastEMTTimestampNs = it->second.get()->TimestampNs();
+      }
+    }
+    if(it->second.get()->DetType() == 0){
+      fLastCoreTimestampNs = it->second.get()->TimestampNs();
+    }
+    if(it->second.get()->DetType()==14){
+      fLastAnodeTimestampNs = it->second.get()->TimestampNs();
+    }
+    if(fLastEMTTimestampNs>0 && fLastCoreTimestampNs>0){
+      Histogramer::Fill("Fragments","tdif: EMT - Core",5000,0,5000,     fLastEMTTimestampNs/pow(10,9), 
+                                                           1000,-5000,5000, fLastEMTTimestampNs-fLastCoreTimestampNs);
+    }
+    if(fLastEMTTimestampNs>0 && fLastAnodeTimestampNs>0){
+      Histogramer::Fill("Fragments","tdif: EMT - Anode",5000,0,5000,     fLastEMTTimestampNs/pow(10,9), 
+                                                            1000,-5000,5000, fLastEMTTimestampNs-fLastAnodeTimestampNs);
+    }
+    if(fLastEMTTimestampNs>0 && fLastCoreTimestampNs>0 && fLastAnodeTimestampNs >0 ){
+      Histogramer::Fill("Fragments","tdif: Anode - Core",5000,0,5000,     fLastEMTTimestampNs/pow(10,9), 
+                                                             1000,-5000,5000, fLastAnodeTimestampNs-fLastCoreTimestampNs);
+    }
+// ==================== end ===================== //
     Builtfrags.emplace_back(std::move(it->second));
     it = fQueue.erase(it);
   }

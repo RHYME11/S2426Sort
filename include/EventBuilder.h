@@ -67,6 +67,12 @@ class EventBuilder {
 
     std::atomic_bool fStop{false};
     std::thread fWorker;
+
+// =================== begin ===================== //
+    long fLastEMTTimestampNs{-1};
+    long fLastCoreTimestampNs{-1};
+    long fLastAnodeTimestampNs{-1};
+// ==================== end ===================== //
 };
 
 
