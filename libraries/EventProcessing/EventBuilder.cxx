@@ -2,7 +2,6 @@
 #include<EventBuilder.h>
 #include<Histogramer.h>
 #include <globals.h>
-
 EventBuilder *EventBuilder::fEventBuilder = 0;
 
 EventBuilder::EventBuilder() {
@@ -41,18 +40,14 @@ void EventBuilder::push(std::unique_ptr<Fragment> frag) {
 void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
   if(fragments.empty()) return;
   std::lock_guard<std::mutex> lk(fMutex);
-
   for(auto& frag : fragments) {
     if(!frag) continue;
 
     const long ts = frag->TimestampNs();
     if(ts > fLatestTimestampNsSeen) fLatestTimestampNsSeen = ts;
-
     fQueue.emplace(ts,std::move(frag));
     fPushed++;
   }
-
-
 }
 
 
@@ -78,10 +73,25 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
     if(std::labs(thisTime - firstTime) > BUILD_WINDOW_NS) {
       break;
     }
-// =================== begin ===================== //
     int number = it->second.get()->Number();
+// ============ Duplicate hit clean =========== //
+    if(number<720 || number==849){
+      if(duplicate_map.find(number)!=duplicate_map.end()){
+        if((thisTime-duplicate_map[number])<1000){ // time difference < 1us
+          it = fQueue.erase(it);
+          continue;
+        }
+      }else{
+        duplicate_map[number] = thisTime;
+      }
+    }
+// =================== begin ===================== //
     if(number == 849){
       if(it->second.get()->Energy()<2000){
+        if(fLastEMTTimestampNs>0){
+          Histogramer::Fill("Fragments","tdif: EMT2 - EMT1", 2000,0,2000, fLastEMTTimestampNs/pow(10,9),
+                                                             1000,0,1000, (it->second.get()->TimestampNs()-fLastEMTTimestampNs)/pow(10,3));
+        }
         fLastEMTTimestampNs = it->second.get()->TimestampNs();
       }
     }
@@ -89,19 +99,23 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
       fLastCoreTimestampNs = it->second.get()->TimestampNs();
     }
     if(it->second.get()->DetType()==14){
+      if(fLastAnodeTimestampNs>0 && fLastAnodeTimestampNs!=it->second.get()->TimestampNs()){
+        Histogramer::Fill("Fragments","tdif: Anode2 - Anode1", 5000,0,5000, fLastAnodeTimestampNs/pow(10,9),                      
+                                                               1000,0,1000, (it->second.get()->TimestampNs()-fLastAnodeTimestampNs)/pow(10,3));
+      }
       fLastAnodeTimestampNs = it->second.get()->TimestampNs();
     }
     if(fLastEMTTimestampNs>0 && fLastCoreTimestampNs>0){
       Histogramer::Fill("Fragments","tdif: EMT - Core",5000,0,5000,     fLastEMTTimestampNs/pow(10,9), 
-                                                           1000,-5000,5000, fLastEMTTimestampNs-fLastCoreTimestampNs);
+                                                       1000,-5000,5000, fLastEMTTimestampNs-fLastCoreTimestampNs);
     }
     if(fLastEMTTimestampNs>0 && fLastAnodeTimestampNs>0){
       Histogramer::Fill("Fragments","tdif: EMT - Anode",5000,0,5000,     fLastEMTTimestampNs/pow(10,9), 
-                                                            1000,-5000,5000, fLastEMTTimestampNs-fLastAnodeTimestampNs);
+                                                        1000,-5000,5000, fLastEMTTimestampNs-fLastAnodeTimestampNs);
     }
     if(fLastEMTTimestampNs>0 && fLastCoreTimestampNs>0 && fLastAnodeTimestampNs >0 ){
       Histogramer::Fill("Fragments","tdif: Anode - Core",5000,0,5000,     fLastEMTTimestampNs/pow(10,9), 
-                                                             1000,-5000,5000, fLastAnodeTimestampNs-fLastCoreTimestampNs);
+                                                         1000,-5000,5000, fLastAnodeTimestampNs-fLastCoreTimestampNs);
     }
 // ==================== end ===================== //
     Builtfrags.emplace_back(std::move(it->second));
