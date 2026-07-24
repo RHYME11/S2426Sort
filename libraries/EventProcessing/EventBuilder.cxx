@@ -2,6 +2,7 @@
 #include<EventBuilder.h>
 #include<Histogramer.h>
 #include <globals.h>
+#include <climits>
 EventBuilder *EventBuilder::fEventBuilder = 0;
 
 EventBuilder::EventBuilder() {
@@ -42,7 +43,6 @@ void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
   std::lock_guard<std::mutex> lk(fMutex);
   for(auto& frag : fragments) {
     if(!frag) continue;
-
     const long ts = frag->TimestampNs();
     if(ts > fLatestTimestampNsSeen) fLatestTimestampNsSeen = ts;
     fQueue.emplace(ts,std::move(frag));
@@ -69,22 +69,22 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
   auto it = fQueue.begin();
   while(it != fQueue.end()) {
     const long thisTime = it->first;
-
     if(std::labs(thisTime - firstTime) > BUILD_WINDOW_NS) {
       break;
     }
     int number = it->second.get()->Number();
-// ============ Duplicate hit clean =========== //
+// ============ Duplicate hit clean (begin) =========== //
     if(number<720 || number==849){
       if(duplicate_map.find(number)!=duplicate_map.end()){
-        if((thisTime-duplicate_map[number])<1000){ // time difference < 1us
+        if((thisTime-duplicate_map[number])<=1000){ // time difference < 1us
           it = fQueue.erase(it);
           continue;
         }
-      }else{
-        duplicate_map[number] = thisTime;
       }
+      duplicate_map[number] = thisTime;
     }
+// ============ Duplicate hit clean (end) =========== //
+
 // =================== begin ===================== //
     if(number == 849){
       if(it->second.get()->Energy()<2000){
