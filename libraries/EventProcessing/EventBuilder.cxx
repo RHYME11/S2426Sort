@@ -85,38 +85,54 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
     }
 // ============ Duplicate hit clean (end) =========== //
 
-// =================== begin ===================== //
+// =================== begin ===================== // 
     if(number == 849){
       if(it->second.get()->Energy()<2000){
-        if(fLastEMTTimestampNs>0){
-          Histogramer::Fill("Fragments","tdif: EMT2 - EMT1", 2000,0,2000, fLastEMTTimestampNs/pow(10,9),
-                                                             1000,0,1000, (it->second.get()->TimestampNs()-fLastEMTTimestampNs)/pow(10,3));
+        if(map[0]>0){
+          Histogramer::Fill("Fragments","tdif: EMT - Core",5000,0,5000,     map[0]/pow(10,9), 
+                                                           1000,-5000,5000, thisTime - map[0]);
         }
-        fLastEMTTimestampNs = it->second.get()->TimestampNs();
+        if(map[14]>0){
+          Histogramer::Fill("Fragments","tdif: EMT - Anode",5000,0,5000,     map[14]/pow(10,9), 
+                                                            1000,-5000,5000, thisTime - map[14]);
+        }
+        if(map.find(849)!=map.end()){
+          Histogramer::Fill("Fragments","tdif: EMT2 - EMT1", 2000,0,2000, map[849]/pow(10,9),
+                                                             1000,0,1000, (thisTime - map[849])/pow(10,3));
+        }
+        map[849] = thisTime;
       }
-    }
+    } // EMT 
     if(it->second.get()->DetType() == 0){
-      fLastCoreTimestampNs = it->second.get()->TimestampNs();
-    }
-    if(it->second.get()->DetType()==14){
-      if(fLastAnodeTimestampNs>0 && fLastAnodeTimestampNs!=it->second.get()->TimestampNs()){
-        Histogramer::Fill("Fragments","tdif: Anode2 - Anode1", 5000,0,5000, fLastAnodeTimestampNs/pow(10,9),                      
-                                                               1000,0,1000, (it->second.get()->TimestampNs()-fLastAnodeTimestampNs)/pow(10,3));
+      if(map[849]>0){
+        Histogramer::Fill("Fragments","tdif: EMT - Core",5000,0,5000,     map[849]/pow(10,9), 
+                                                         1000,-5000,5000, map[849] - thisTime);
       }
-      fLastAnodeTimestampNs = it->second.get()->TimestampNs();
-    }
-    if(fLastEMTTimestampNs>0 && fLastCoreTimestampNs>0){
-      Histogramer::Fill("Fragments","tdif: EMT - Core",5000,0,5000,     fLastEMTTimestampNs/pow(10,9), 
-                                                       1000,-5000,5000, fLastEMTTimestampNs-fLastCoreTimestampNs);
-    }
-    if(fLastEMTTimestampNs>0 && fLastAnodeTimestampNs>0){
-      Histogramer::Fill("Fragments","tdif: EMT - Anode",5000,0,5000,     fLastEMTTimestampNs/pow(10,9), 
-                                                        1000,-5000,5000, fLastEMTTimestampNs-fLastAnodeTimestampNs);
-    }
-    if(fLastEMTTimestampNs>0 && fLastCoreTimestampNs>0 && fLastAnodeTimestampNs >0 ){
-      Histogramer::Fill("Fragments","tdif: Anode - Core",5000,0,5000,     fLastEMTTimestampNs/pow(10,9), 
-                                                         1000,-5000,5000, fLastAnodeTimestampNs-fLastCoreTimestampNs);
-    }
+      if(map[14]>0){
+        Histogramer::Fill("Fragments","tdif: Anode - Core",5000,0,5000,     map[14]/pow(10,9), 
+                                                           1000,-5000,5000, map[14] - thisTime);
+      }
+      if(map.find(0)!=map.end()){
+        Histogramer::Fill("Fragments","tdif: Core2 - Core1",5000,0,5000,    map[0]/pow(10,9),
+                                                            1000,-5000,5000,thisTime - map[0]);
+      }
+      map[0] = thisTime;
+    }// Core
+    if(it->second.get()->DetType()==14){
+      if(map[14]>0 && map[14]!=thisTime){
+        Histogramer::Fill("Fragments","tdif: Anode2 - Anode1", 5000,0,5000, map[14]/pow(10,9),                      
+                                                               1000,0,1000, (it->second.get()->TimestampNs()-map[14])/pow(10,3));
+      }
+      if(map[0]>0){
+        Histogramer::Fill("Fragments","tdif: Anode - Core",5000,0,5000,     map[0]/pow(10,9), 
+                                                           1000,-5000,5000, thisTime-map[0]);
+      }
+      if(map[849]>0){
+        Histogramer::Fill("Fragments","tdif: EMT - Anode",5000,0,5000,     map[849]/pow(10,9), 
+                                                          1000,-5000,5000, map[849] - thisTime);
+      }
+      map[14] = it->second.get()->TimestampNs();
+    } // Anode
 // ==================== end ===================== //
     Builtfrags.emplace_back(std::move(it->second));
     it = fQueue.erase(it);

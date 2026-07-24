@@ -69,11 +69,9 @@ class EventBuilder {
     std::thread fWorker;
     
     std::map<int,long> duplicate_map; // <number, timestampNs>, clean the duplicate from GRF4 only
-// =================== begin ===================== //
-    long fLastEMTTimestampNs{-1};
-    long fLastCoreTimestampNs{-1};
-    long fLastAnodeTimestampNs{-1};
-// ==================== end ===================== //
+// ============= begin =========== //
+    std::map<int,long> map;
+// ============== end ============ //
 };
 
 

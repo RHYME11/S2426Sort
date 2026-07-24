@@ -459,6 +459,9 @@ Status output reports:
 - EventProcess queue size
 - Detector events completed
 
+Reading and queue draining share one four-line status display that refreshes in
+place. After processing finishes, a final four-line status is printed normally.
+
 ## Current implementation notes
 
 - `main()` expects an input path in `argv[1]`; it does not currently validate

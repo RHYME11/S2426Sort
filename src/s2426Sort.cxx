@@ -27,7 +27,7 @@ long MakeEmmaADC(uint32_t*,int,std::vector<std::unique_ptr<Fragment>>&);
 void MakeEmmaTDC(uint32_t*,int,long,std::vector<std::unique_ptr<Fragment>>&);
 
 
-void doStatus(TMidasFile&,bool forcePrint=false);
+void doStatus(TMidasFile&,bool forcePrint=false,bool finalPrint=false);
 auto start     = std::chrono::steady_clock::now();
 auto lastPrint = std::chrono::steady_clock::now();
 auto timeEllapsed = std::chrono::duration_cast<std::chrono::seconds>(lastPrint-start);
@@ -106,7 +106,6 @@ int main(int argc, char **argv) {
     doStatus(infile);
   }
   doStatus(infile,true);
-  printf("\nDraining queues...\n");
 
   EventBuilder::Get()->Flush();
 
@@ -121,15 +120,22 @@ int main(int argc, char **argv) {
 
   std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-  printf("\nFinal status:\n");
-  doStatus(infile, true);
+  printf(CURSOR_DOWN);
+  printf(CURSOR_DOWN);
+  printf(CURSOR_DOWN);
+  printf(CURSOR_DOWN);
+  printf("\rFinal status:\n");
+  doStatus(infile, true, true);
 
   gHist->Close();
   return 0;
 }
 
-// =================================================================================== //
-void doStatus(TMidasFile &infile, bool forcePrint) {
+// ============== doStatus ==============
+// Purpose: Refresh active status in place or print the final status with newlines.
+// Inputs: MIDAS file, force flag, and final-output flag.
+// Outputs: Four status lines written to stdout.
+void doStatus(TMidasFile &infile, bool forcePrint, bool finalPrint) {
 
   if((std::chrono::steady_clock::now()-lastPrint) > interval) forcePrint=true;
   if(!forcePrint) return;
@@ -142,10 +148,7 @@ void doStatus(TMidasFile &infile, bool forcePrint) {
   const double frac    = infile.GetFileSize() > 0 ? readMB/totalMB : 0.0;
   const double rate    = timeEllapsed.count() > 0 ? readMB/timeEllapsed.count() : 0.0;
 
-  const bool doneReading = infile.GetBytesRead() >= infile.GetFileSize();
-
-  if(doneReading) {
-    printf("\n");
+  if(finalPrint) {
     printf(" %lld s  read %.02f / %.02f MB  %.1f%%  %.2f MB/s\n",
         timeEllapsed.count(), readMB, totalMB, 100.0*frac, rate);
 
