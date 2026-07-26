@@ -51,16 +51,16 @@ class EventBuilder {
   private:
     static EventBuilder *fEventBuilder;
 
-    long fLastTimestampNs{-1};
     long fLatestTimestampNsSeen{0};
     std::atomic_bool fFlushing{false};
 
-    static constexpr long BUILD_WINDOW_NS  = 5000;
+    //static constexpr long BUILD_WINDOW_NS  = 5000;
     static constexpr long REORDER_SLACK_NS = 500000000;
+    static constexpr long DUPLICATE_WINDOW_NS = 1000;
 
     mutable std::mutex fMutex;
-    std::multimap<long, std::unique_ptr<Fragment>> fQueue;
-
+    std::multimap<long, std::unique_ptr<Fragment>> fQueue;// for all fragments
+    std::map<long, Fragment*> fEMTMap; // for EMT only
 
     std::atomic<uint32_t> fPushed{0};
     std::atomic<uint32_t> fPopped{0};
@@ -69,9 +69,6 @@ class EventBuilder {
     std::thread fWorker;
     
     std::map<int,long> duplicate_map; // <number, timestampNs>, clean the duplicate from GRF4 only
-// ============= begin =========== //
-    std::map<int,long> map;
-// ============== end ============ //
 };
 
 
