@@ -78,6 +78,11 @@ class EventBuilder {
 
     std::atomic_bool fStop{false};
     std::thread fWorker;
+
+// ========== begin =========== //
+    long fLastSiTimestamp = -10001;
+// =========== end ============ //
+
 };
 
 

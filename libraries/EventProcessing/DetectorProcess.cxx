@@ -86,7 +86,21 @@ void DetectorProcess::loop() {
             event.emma->fADCTime - event.emma->fTDCTime);
         //}
       }
-    }
+      bool flag_Si = false; 
+      for(int i=0;i<event.emma->fADC.size();i++){
+        if(event.emma->fADC[i].Number()==861){ // Si
+          flag_Si = true;
+          break;
+        }
+      }// i loop over
+      if(flag_Si){
+        int count = 0;
+        for(int j=0;j<event.emma->fTDC.size();j++){
+          if(event.emma->fTDC[j].Number()>=866 && event.emma->fTDC[j].Number()<=878) count++; // TDC anode
+        }// j loop over 
+        Histogramer::Fill("DetectorProcess","Anode size with Si", 10,0,10,count);
+      }
+    } // if event emma over
 
     // -------------------------
     // TIGRESS-EMMA coincidences
