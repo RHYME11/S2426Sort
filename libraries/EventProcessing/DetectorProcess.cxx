@@ -96,10 +96,19 @@ void DetectorProcess::loop() {
       if(flag_Si){
         int count = 0;
         for(int j=0;j<event.emma->fTDC.size();j++){
-          if(event.emma->fTDC[j].Number()>=866 && event.emma->fTDC[j].Number()<=878) count++; // TDC anode
+          if(event.emma->fTDC[j].Number()>=866 && event.emma->fTDC[j].Number()<=868) count++; // TDC anode
         }// j loop over 
         Histogramer::Fill("DetectorProcess","Anode size with Si", 10,0,10,count);
-      }
+        if(count==0){
+          for(int i=0;i<event.emma->fADC.size();i++){
+            printf("\033[34m%s\t 0x%08x\t %lu\033[0m\n",event.emma->fADC[i].Name().c_str(), event.emma->fADC[i].Address(), event.emma->fADC[i].Timestamp());
+          }
+          for(int i=0;i<event.emma->fTDC.size();i++){
+            printf("\033[31m%s\t 0x%08x\t %lu\033[0m\n",event.emma->fTDC[i].Name().c_str(), event.emma->fTDC[i].Address(), event.emma->fTDC[i].Timestamp());
+          }
+          printf("\n");
+        }
+      } // if flag_Si is true over
     } // if event emma over
 
     // -------------------------

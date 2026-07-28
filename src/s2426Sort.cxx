@@ -337,8 +337,10 @@ void MakeEmmaTDC(uint32_t* pdata ,int size, long adcTimestamp) {
           int c = ((datum >> 19) & 0xff ); 
           //printf("tdc: 0x%08x\t%i\n",c,c);
         }  
-        addresses.push_back(0x900000 + ((datum >> 19) & 0xff ) );  
-        charges.push_back(datum & 0x7ffff);
+        //addresses.push_back(0x900000 + ((datum >> 19) & 0xff ) );  
+        //charges.push_back(datum & 0x7ffff);
+        addresses.push_back(0x900000 +((datum >> 21) & 0x1f));  
+        charges.push_back(datum & 0x1fffff);
         break;
       case 0x3:  //tdc trailer
         break;
