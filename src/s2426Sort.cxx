@@ -30,6 +30,10 @@ auto timeEllapsed = std::chrono::duration_cast<std::chrono::seconds>(lastPrint-s
 const std::chrono::seconds interval(1); // 1 second interval
 
 constexpr long EMMA_TO_TIGRESS_TS_SCALE = 5;
+// ======== begin ======= //
+bool flag_Si = false;
+int anode_count = 0;
+// ========= end ======== //
 
 int main(int argc, char **argv) {
   TMidasFile infile(argv[1]);
@@ -58,11 +62,14 @@ int main(int argc, char **argv) {
   std::map<std::string,int> banksFound;
   std::map<std::string,int> banksFound2;
   std::map<int,int>         typeFound;
-
   int counter = 0;
   while(infile.Read(event)) {
     //if(!event.GetEventId()&0xf000)
     //event.Print();
+    // ======== begin ======= //
+    flag_Si = false;
+    anode_count = 0;
+    // ========= end ======== //
     switch(event.GetEventId()) {
       case 1: { //trigger
         Histogramer::Fill("EventTrigger",10,0,10,event.GetTriggerMask());
@@ -104,6 +111,9 @@ int main(int argc, char **argv) {
     case 0x8002: //message Event;
       break;
   };
+  // ==== begin ==== //
+  if(flag_Si) Histogramer::Fill("s2426Sort","Anode size with Si", 10,0,10, anode_count);
+  // ===== end ===== //
   typeFound[event.GetEventId()]++;
   counter++;
   doStatus(infile);
@@ -270,7 +280,9 @@ long MakeEmmaADC(uint32_t* pdata,int size) {
               1000,0,1000,c);
 
           //printf(DBLUE "%lu " RESET_COLOR "\n",frag->Timestamp());
-
+          // ===== begin ==== //
+          if(frag.get()->Number()==861) flag_Si = true;
+          // ====== end ===== //
           EventBuilder::Get()->push(std::move(frag));
         }
         break;   
@@ -376,6 +388,7 @@ void MakeEmmaTDC(uint32_t* pdata ,int size, long adcTimestamp) {
           //printf("EMMA TDC\n");
           //frag.get()->Print();
           //printf(DRED "%lu " RESET_COLOR "\n",frag->Timestamp());
+          if(frag.get()->Number()>=866 && frag.get()->Number()<=868) anode_count++;
           EventBuilder::Get()->push(std::move(frag));
         }
         addresses.clear();

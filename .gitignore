@@ -4,6 +4,7 @@ build/
 bin/
 
 data/
+tests/
 
 *.o
 *.so

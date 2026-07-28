@@ -88,12 +88,6 @@ if(!fFlushing) {
 
   while(it != fQueue.end()) {
     const long thisTime = it->first;
-// =========== begin ========== //
-    if(it->second.get()->Number()==861){fLastSiTimestamp=thisTime;} 
-    if(it->second.get()->Number()==866 && it->second.get()->Number()<=868){
-      Histogramer::Fill("EventBuilder","Si.ts - Anode.ts", 1000,-10000,10000, thisTime-fLastSiTimestamp);
-    } 
-// ============ end =========== //
 
     if(std::labs(thisTime - firstTime) > BUILD_WINDOW) {
       break;
