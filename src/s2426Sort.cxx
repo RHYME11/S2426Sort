@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
   printf(" \trun:    %i\n",run);
   printf(" \tsubrun: %i\n",subrun);
 
-  Channel::Read("cal/CalibrationFile_Nov182025.cal"); 
+  Channel::Read("cal/CalibrationFile_May1526_pol1.cal"); 
 
   //start event builder;
   EventBuilder::Get();
@@ -260,7 +260,7 @@ long MakeEmmaADC(uint32_t* pdata,int size) {
           frag.get()->SetCfd(0);             
           frag.get()->SetFilterPattern(0);   
           frag.get()->SetPileup(0);          
-          frag.get()->SetDetType(12);
+          frag.get()->SetDetType(13);
 
           //printf("EMMA ADC\n");
           int c     = frag.get()->Address()&0xff;
@@ -365,7 +365,7 @@ void MakeEmmaTDC(uint32_t* pdata ,int size, long adcTimestamp) {
           frag.get()->SetCfd(0);             
           frag.get()->SetFilterPattern(0);
           frag.get()->SetPileup(0);
-          frag.get()->SetDetType(13);
+          frag.get()->SetDetType(14);
 
 
           int c     = frag.get()->Address()&0xff;
