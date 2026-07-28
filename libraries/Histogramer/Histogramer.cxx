@@ -1,7 +1,7 @@
 
 
 #include <filesystem>
-
+#include <sstream>
 
 #include <Histogramer.h>
 #include <globals.h>
@@ -63,14 +63,18 @@ void Histogramer::Close() {
 }
 
 
-Histogramer::~Histogramer() { 
+// ============== ~Histogramer ==============
+// Purpose: Write owned histograms to the run output file.
+// Inputs: Histogram directory names and lists stored in gHistMap.
+// Outputs: A ROOT file containing top-level and nested directories.
+Histogramer::~Histogramer() {
   if(gHistMap) {
     int run,subrun;
 
     std::string outDir = "histOutput";
     if(!std::filesystem::exists(outDir))
       std::filesystem::create_directory(outDir);
-    TFile *outFile = new TFile(Form("%s/hist%i-%02i.root",outDir.c_str(),fRun,fSubrun),"recreate");
+    TFile *outFile = new TFile(Form("%s/hist%i_%03i.root",outDir.c_str(),fRun,fSubrun),"recreate");
     std::map<std::string,TList*>::iterator it;
     int counter = 0;
 
@@ -88,14 +92,26 @@ Histogramer::~Histogramer() {
       } else {
         //printf("\t %i  i am here: %s\n",counter++,dname.c_str());
         TDirectory *current = gDirectory;
+        TDirectory *dir = outFile;
+        std::stringstream ss(dname);
+        std::string part;
 
-        outFile->mkdir(dname.c_str())->cd();
-        //outfile->cd();
+        while(std::getline(ss, part, '/')) {
+          if(part.empty())
+            continue;
+
+          TDirectory *next = dir->GetDirectory(part.c_str());
+          if(!next)
+            next = dir->mkdir(part.c_str());
+
+          dir = next;
+        }
+
+        dir->cd();
         l->Sort();
-        printf("list entries = %i\n",l->GetEntries());
+        printf("directory = %s, list entries = %i\n", dname.c_str(), l->GetEntries());
         l->Write();
-        if(current) 
-          current->cd();
+        if(current) current->cd();
       }
         /*
         for(int i=0;i<l->GetEntries();i++) {
@@ -153,7 +169,6 @@ void Histogramer::Fill(std::string dname,std::string hname,
   return;
 
 }
-
 
 
 

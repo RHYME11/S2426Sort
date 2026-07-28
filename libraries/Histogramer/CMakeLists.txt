@@ -5,6 +5,4 @@ root_generate_dictionary(G__Histogramer Histogramer.h MODULE HISTOGRAMER LINKDEF
 target_link_libraries(HISTOGRAMER PRIVATE ${ROOT_LIBRARIES})
 
 #link the compiled libraries above to the final executable.
-target_link_libraries(s2426Sort PRIVATE HISTOGRAMER)        
-
-
+target_link_libraries(s2426Sort PRIVATE HISTOGRAMER)
