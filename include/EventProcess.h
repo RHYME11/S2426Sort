@@ -14,6 +14,7 @@
 struct DetectorEvent {
   long timestamp{0};
   long timestampNs{0};
+  bool prompt{false};
 
   std::unique_ptr<Tigress> tigress;
   std::unique_ptr<Emma>    emma;

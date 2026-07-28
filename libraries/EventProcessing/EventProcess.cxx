@@ -69,7 +69,9 @@ void EventProcess::loop() {
     event.timestampNs   = builtfrags.front()->TimestampNs();
     event.tigress       = std::make_unique<Tigress>();
     event.emma          = std::make_unique<Emma>();
-
+    // =====  begin () ======== //
+    long lasttime = builtfrags.back()->TimestampNs();
+    // ====== end() 
 
     for(auto& frag : builtfrags) {
       if(!frag) continue;
@@ -77,6 +79,9 @@ void EventProcess::loop() {
       switch(frag->DetType()){
         case 0: // TIGRESS core
           event.tigress->fCoreHits.emplace_back(*frag);
+          break;
+        case 8: // EMT
+          event.prompt = true;
           break;
         case 13: // EMMA ADC
           event.emma->AddADC(*frag);
@@ -89,7 +94,11 @@ void EventProcess::loop() {
 
       };
     }
-    
+    // ======== begin() ========== //
+    if(event.prompt) Histogramer::Fill("Events","prompt: event time length[ns]",1e7,0,1e8,lasttime - event.timestampNs);
+    else             Histogramer::Fill("Events","delay:  event time length[ns]",1e7,0,1e8,lasttime - event.timestampNs);
+    // ========= end() =========== //   
+ 
     event.tigress->BuildHits();
     event.emma->BuildHits();
 
