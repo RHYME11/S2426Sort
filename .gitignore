@@ -4,6 +4,7 @@ grsi_macros/
 bin/
 tests/
 data/
+EMMA_DAQ/
 
 *.o
 *.so

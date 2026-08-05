@@ -55,8 +55,8 @@ class EventBuilder {
     std::atomic_bool fFlushing{false};
 
     //static constexpr long BUILD_WINDOW_NS  = 5000;
-    static constexpr long REORDER_SLACK_NS = 500000000;
-    static constexpr long DUPLICATE_WINDOW_NS = 1000;
+    static constexpr long REORDER_SLACK_NS = 5000000000;
+    static constexpr long DUPLICATE_WINDOW_NS = 0;
 
     mutable std::mutex fMutex;
     std::multimap<long, std::unique_ptr<Fragment>> fQueue;// for all fragments

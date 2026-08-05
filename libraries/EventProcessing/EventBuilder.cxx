@@ -77,7 +77,7 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
     int number = it->second.get()->Number();
     if(number<720 || number==849){
       if(duplicate_map.find(number)!=duplicate_map.end()){
-        if((thisTime-duplicate_map[number])<=1000){ // time difference < 1us
+        if((thisTime-duplicate_map[number])<=DUPLICATE_WINDOW_NS){ // time difference < 1us
           it = fQueue.erase(it);
           continue;
         }
