@@ -103,14 +103,14 @@ int main(int argc, char **argv) {
     };
     typeFound[event.GetEventId()]++;
     counter++;
-    doStatus(infile);
+    //doStatus(infile);
   }
-  doStatus(infile,true);
+  //doStatus(infile,true);
 
   EventBuilder::Get()->Flush();
 
   while(EventBuilder::Get()->Size() > 0 || EventProcess::Get()->Size() > 0) {
-    doStatus(infile, true);
+    //doStatus(infile, true);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
   printf(CURSOR_DOWN);
   printf(CURSOR_DOWN);
   printf("\rFinal status:\n");
-  doStatus(infile, true, true);
+  //doStatus(infile, true, true);
 
   gHist->Close();
   return 0;

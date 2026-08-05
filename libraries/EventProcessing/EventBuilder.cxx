@@ -85,6 +85,7 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
       duplicate_map[number] = thisTime;
     }
     // ============ Duplicate hit clean (end) =========== //
+    printf("fQueue = %lu\t EMTts = %lu\n", thisTime, EMTts);
     if(EMTts<0){ // fFLushing must be true
       Builtfrags.emplace_back(std::move(it->second));
       it = fQueue.erase(it);  
