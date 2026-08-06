@@ -56,7 +56,6 @@ class EventBuilder {
 
     //static constexpr long BUILD_WINDOW_NS  = 5000;
     static constexpr long REORDER_SLACK_NS = 5000000000;
-    static constexpr long DUPLICATE_WINDOW_NS = 0;
 
     mutable std::mutex fMutex;
     std::multimap<long, std::unique_ptr<Fragment>> fQueue;// for all fragments
@@ -67,8 +66,6 @@ class EventBuilder {
 
     std::atomic_bool fStop{false};
     std::thread fWorker;
-    
-    std::map<int,long> duplicate_map; // <number, timestampNs>, clean the duplicate from GRF4 only
 };
 
 

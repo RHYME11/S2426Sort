@@ -3,6 +3,8 @@
 #include<Histogramer.h>
 #include <globals.h>
 #include <climits>
+#include <set>
+#include <utility>
 EventBuilder *EventBuilder::fEventBuilder = 0;
 
 EventBuilder::EventBuilder() {
@@ -35,18 +37,58 @@ void EventBuilder::push(std::unique_ptr<Fragment> frag) {
 }
 
 // ============== pushBatch ==============
-// Purpose: Atomically submit fragments from one complete MIDAS event.
+// Purpose: Remove exact batch-local duplicates and atomically publish fragments.
 // Inputs: Fragments decoded from one MIDAS event.
-// Outputs: Fragments inserted into the timestamp-ordered queue.
+// Outputs: Unique fragments inserted into fQueue and EMT timestamps into fEMTMap.
 void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
-  if(fragments.empty()) return;
-  std::lock_guard<std::mutex> lk(fMutex);
+  if(fragments.empty()) {
+    return;
+  }
+
+  using DuplicateKey = std::pair<int, long>;
+
+  std::set<DuplicateKey> seen;
+  std::vector<std::unique_ptr<Fragment>> uniqueFragments;
+  uniqueFragments.reserve(fragments.size());
+
   for(auto& frag : fragments) {
-    if(!frag) continue;
+    if(!frag) {
+      continue;
+    }
+
+    const int number = frag->Number();
+    const bool duplicateCandidate = number < 720 || number == 849;
+
+    if(duplicateCandidate) {
+      const DuplicateKey key{frag->Address(), frag->TimestampNs()};
+      const bool firstOccurrence = seen.emplace(key).second;
+      if(!firstOccurrence) {
+        continue;
+      }
+    }
+
+    uniqueFragments.emplace_back(std::move(frag));
+  }
+
+  if(uniqueFragments.empty()) {
+    return;
+  }
+
+  std::lock_guard<std::mutex> lock(fMutex);
+
+  for(auto& frag : uniqueFragments) {
+    if(!frag) {
+      continue;
+    }
+
     const long ts = frag->TimestampNs();
-    if(ts > fLatestTimestampNsSeen) fLatestTimestampNsSeen = ts;
-    if(frag->DetType()==8 && fEMTMap.find(ts)==fEMTMap.end()) fEMTMap.emplace(ts,frag.get());
-    fQueue.emplace(ts,std::move(frag));
+    if(ts > fLatestTimestampNsSeen) {
+      fLatestTimestampNsSeen = ts;
+    }
+    if(frag->DetType() == 8 && fEMTMap.find(ts) == fEMTMap.end()) {
+      fEMTMap.emplace(ts, frag.get());
+    }
+    fQueue.emplace(ts, std::move(frag));
     fPushed++;
   }
 }
@@ -73,19 +115,6 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
   auto it = fQueue.begin();
   while(it!=fQueue.end()){
     const long thisTime = it->first;
-    // ============ Duplicate hit clean (begin) =========== //
-    int number = it->second.get()->Number();
-    if(number<720 || number==849){
-      if(duplicate_map.find(number)!=duplicate_map.end()){
-        if((thisTime-duplicate_map[number])<=DUPLICATE_WINDOW_NS){ // time difference < 1us
-          it = fQueue.erase(it);
-          continue;
-        }
-      }
-      duplicate_map[number] = thisTime;
-    }
-    // ============ Duplicate hit clean (end) =========== //
-    printf("fQueue = %lu\t EMTts = %lu\n", thisTime, EMTts);
     if(EMTts<0){ // fFLushing must be true
       Builtfrags.emplace_back(std::move(it->second));
       it = fQueue.erase(it);  
