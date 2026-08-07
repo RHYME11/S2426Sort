@@ -80,6 +80,12 @@ void EventProcess::loop() {
         case 0: // TIGRESS core
           event.tigress->fCoreHits.emplace_back(*frag);
           break;
+        case 2: // TIGRESS segments
+          event.tigress->fSegmentHits.emplace_back(*frag);
+          break;
+        case 3: // TIGRESS core
+          event.tigress->fBGOHits.emplace_back(*frag);
+          break;
         case 8: // EMT
           event.prompt = true;
           break;
@@ -95,8 +101,13 @@ void EventProcess::loop() {
       };
     }
     // ======== begin() ========== //
-    if(event.prompt) Histogramer::Fill("Events","prompt: event time length[ns]",1e7,0,1e8,lasttime - event.timestampNs);
-    else             Histogramer::Fill("Events","delay:  event time length[ns]",1e7,0,1e8,lasttime - event.timestampNs);
+    if(event.prompt) {
+      Histogramer::Fill("Events","prompt: event time length[ns]",1e7,0,1e8,lasttime - event.timestampNs);
+      Histogramer::Fill("Events","prompt: event size",100,0,100, builtfrags.size());
+    }else{
+      Histogramer::Fill("Events","delay:  event time length[ns]",1e7,0,1e8,lasttime - event.timestampNs);
+      Histogramer::Fill("Events","delay: event size",100,0,100, builtfrags.size());
+    }
     // ========= end() =========== //   
  
     event.tigress->BuildHits();

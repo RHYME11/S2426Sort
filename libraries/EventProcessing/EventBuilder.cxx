@@ -115,6 +115,11 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
   auto it = fQueue.begin();
   while(it!=fQueue.end()){
     const long thisTime = it->first;
+    // ==== BEGIN ==== //
+    if(it->second.get()->Number()>849 && it->second.get()->Number()<874) {
+      Histogramer::Fill("EventBuilder","dt = EMA - EMTts", 300,-1500,1500,thisTime - EMTts);
+    }
+    // ===== END ===== //
     if(EMTts<0){ // fFLushing must be true
       Builtfrags.emplace_back(std::move(it->second));
       it = fQueue.erase(it);  

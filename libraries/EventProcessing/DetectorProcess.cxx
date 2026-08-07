@@ -95,16 +95,44 @@ void DetectorProcess::loop() {
           Histogramer::Fill("Emma_Tig","summary_good",70,0,70,det*4 + xtal,8000,0,4000,current.Energy());
         }
       } // loop tig core over
-      Histogramer::Fill("Emma_Tig","Si Size",10,0,10,event.emma->Si().size());
-      Histogramer::Fill("Emma_Tig","Anode Size",10,0,10,event.emma->Anodes().size());
-      Histogramer::Fill("Emma_Tig","IC1 Size"  ,10,0,10,event.emma->IC1().size());
-      Histogramer::Fill("Emma_Tig","IC2 Size"  ,10,0,10,event.emma->IC2().size());
-      Histogramer::Fill("Emma_Tig","IC3 Size"  ,10,0,10,event.emma->IC3().size());
-      Histogramer::Fill("Emma_Tig","IC4 Size"  ,10,0,10,event.emma->IC4().size());
+      Histogramer::Fill("Emma_Tig","Si Size",100,0,100,event.emma->Si().size());
+      Histogramer::Fill("Emma_Tig","Anode Size",100,0,100,event.emma->Anodes().size());
+      Histogramer::Fill("Emma_Tig","IC1 Size"  ,100,0,100,event.emma->IC1().size());
+      Histogramer::Fill("Emma_Tig","IC2 Size"  ,100,0,100,event.emma->IC2().size());
+      Histogramer::Fill("Emma_Tig","IC3 Size"  ,100,0,100,event.emma->IC3().size());
+      Histogramer::Fill("Emma_Tig","IC4 Size"  ,100,0,100,event.emma->IC4().size());
       if(event.emma->Si().size()>0){
         Histogramer::Fill("Emma_Tig/Si_triggered", "Anode Size", 10,0,10,event.emma->Anodes().size());
       }
+    } // tig-emma coinc
+
+    // -------------------------
+    // Prompt
+    // -------------------------
+  
+    if(event.prompt){
+      Histogramer::Fill("EventProcessing","prompt: Core.size"  ,100,0,100, event.tigress->fCoreHits.size());
+      Histogramer::Fill("EventProcessing","prompt: Si.size"    ,100,0,100, event.emma->Si().size());
+      Histogramer::Fill("EventProcessing","prompt: IC1.size"   ,100,0,100, event.emma->IC1().size());
+      Histogramer::Fill("EventProcessing","prompt: IC2.size"   ,100,0,100, event.emma->IC2().size());
+      Histogramer::Fill("EventProcessing","prompt: IC3.size"   ,100,0,100, event.emma->IC3().size());
+      Histogramer::Fill("EventProcessing","prompt: IC4.size"   ,100,0,100, event.emma->IC4().size());
+      Histogramer::Fill("EventProcessing","prompt: pgac_l.size",100,0,100, event.emma->Left().size());
+      Histogramer::Fill("EventProcessing","prompt: pgac_r.size",100,0,100, event.emma->Right().size());
+      Histogramer::Fill("EventProcessing","prompt: anode.size" ,100,0,100, event.emma->Anodes().size());
+    } // if prompt over
+    else{
+      Histogramer::Fill("EventProcessing","delay: Core.size"  ,100,0,100, event.tigress->fCoreHits.size());
+      Histogramer::Fill("EventProcessing","delay: Si.size"    ,100,0,100, event.emma->Si().size());
+      Histogramer::Fill("EventProcessing","delay: IC1.size"   ,100,0,100, event.emma->IC1().size());
+      Histogramer::Fill("EventProcessing","delay: IC2.size"   ,100,0,100, event.emma->IC2().size());
+      Histogramer::Fill("EventProcessing","delay: IC3.size"   ,100,0,100, event.emma->IC3().size());
+      Histogramer::Fill("EventProcessing","delay: IC4.size"   ,100,0,100, event.emma->IC4().size());
+      Histogramer::Fill("EventProcessing","delay: pgac_l.size",100,0,100, event.emma->Left().size());
+      Histogramer::Fill("EventProcessing","delay: pgac_r.size",100,0,100, event.emma->Right().size());
+      Histogramer::Fill("EventProcessing","delay: anode.size" ,100,0,100, event.emma->Anodes().size());
     }
+
   }
 }
 
