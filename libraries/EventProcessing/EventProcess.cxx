@@ -3,6 +3,7 @@
 
 #include<EventBuilder.h>
 #include<Histogramer.h>
+#include<OutputManager.h>
 
 #include<globals.h>
 
@@ -112,6 +113,8 @@ void EventProcess::loop() {
  
     event.tigress->BuildHits();
     event.emma->BuildHits();
+
+    OutputManager::Get()->FillEvent(event.prompt, *event.emma, *event.tigress);
 
     push(std::move(event));
   }

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <Channel.h>
+#include <TObject.h>
 #include "TRandom.h"
 
 class Fragment { 
@@ -84,7 +85,7 @@ class Fragment {
       return;
     }
 
-  //ClassDef(Fragment,1);
+  ClassDef(Fragment,1);
 };
 
 

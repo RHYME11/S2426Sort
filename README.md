@@ -4,7 +4,7 @@ S2426Sort is a ROOT/C++ sorter for MIDAS data containing TIGRESS and EMMA
 detector banks. It reads one MIDAS file, decodes detector-specific data into a
 common `Fragment` type, atomically submits all fragments from each MIDAS event
 to a timestamp-ordered queue, builds time-correlated detector events, and writes
-ROOT histograms.
+ROOT event trees and histograms.
 
 ## Contents
 
@@ -17,6 +17,7 @@ ROOT histograms.
 - [Detector event processing](#detector-event-processing)
 - [TIGRESS data](#tigress-data)
 - [EMMA data](#emma-data)
+- [Event tree output](#event-tree-output)
 - [Histogram processing](#histogram-processing)
 - [Ownership and threading](#ownership-and-threading)
 - [End-of-run handling](#end-of-run-handling)
@@ -44,6 +45,12 @@ written to:
 histOutput/hist<run>_<subrun>.root
 ```
 
+Prompt and background detector events are written to:
+
+```text
+event<run>_<subrun>.root
+```
+
 ## Project layout
 
 ```text
@@ -58,6 +65,7 @@ histOutput/hist<run>_<subrun>.root
 │   ├── EventProcess.h
 │   ├── Fragment.h
 │   ├── Histogramer.h
+│   ├── OutputManager.h
 │   ├── Tigress.h
 │   ├── TMidasEvent.h
 │   └── TMidasFile.h
@@ -65,6 +73,7 @@ histOutput/hist<run>_<subrun>.root
 │   ├── Channel/
 │   ├── EventProcessing/
 │   ├── Histogramer/
+│   ├── OutputManager/
 │   ├── Physics/
 │   ├── TChannel/
 │   └── TMidas/
@@ -84,6 +93,7 @@ The main processing components are:
 | `EventProcess` | Route built fragments into `Tigress` and `Emma` objects |
 | `DetectorProcess` | Fill detector and coincidence histograms |
 | `Histogramer` | Create, own, and write ROOT histograms |
+| `OutputManager` | Create, fill, and write prompt/background event trees |
 
 ## Processing pipeline
 
@@ -108,6 +118,8 @@ flowchart TD
   L --> M["EventBuilder::pop()"]
   M --> N["EventProcess::loop()"]
   N --> O["Tigress::BuildHits() and Emma::BuildHits()"]
+  O --> T["OutputManager::FillEvent()"]
+  T --> U["event<run>_<subrun>.root"]
   O --> P["EventProcess detector-event queue"]
   P --> Q["DetectorProcess::loop()"]
   Q --> R["Histogramer::Fill()"]
@@ -257,6 +269,7 @@ For each non-empty built group, it creates:
 struct DetectorEvent {
   long timestamp{0};
   long timestampNs{0};
+  bool prompt{false};
   std::unique_ptr<Tigress> tigress;
   std::unique_ptr<Emma> emma;
 };
@@ -268,6 +281,9 @@ by `DetType()`:
 | DetType | Destination |
 |---:|---|
 | 0 | `Tigress::fCoreHits` |
+| 2 | `Tigress::fSegmentHits` |
+| 3 | `Tigress::fBGOHits` |
+| 8 | Set `DetectorEvent::prompt` to true |
 | 13 | `Emma::AddADC()` |
 | 14 | `Emma::AddTDC()` |
 | other | Not stored in a detector object |
@@ -279,7 +295,9 @@ event.tigress->BuildHits();
 event.emma->BuildHits();
 ```
 
-The completed `DetectorEvent` is moved into the EventProcess queue for
+`OutputManager::FillEvent()` then copies the `Emma` and `Tigress` objects into
+its branch buffers and fills either the `prompt` or `bg` tree. The completed
+`DetectorEvent` is subsequently moved into the EventProcess queue for
 DetectorProcess.
 
 ## TIGRESS data
@@ -299,10 +317,10 @@ A successfully unpacked TIGRESS fragment contains the decoded address, detector
 type, timestamp, CFD, charge, integration, filter pattern, and pileup state. Its
 timestamp unit is 10 ns.
 
-EventProcess currently routes only `DetType == 0` into
-`Tigress::fCoreHits`. `Tigress::BuildHits()` creates one `TigressHit` per
-core fragment, while DetectorProcess fills current histograms directly from
-`fCoreHits`.
+EventProcess routes core, segment, and BGO fragments into `fCoreHits`,
+`fSegmentHits`, and `fBGOHits`. These three `vector<Fragment>` members are the
+temporary persisted TIGRESS representation. `fHits` is currently transient,
+while DetectorProcess fills current histograms directly from `fCoreHits`.
 
 ## EMMA data
 
@@ -366,6 +384,30 @@ TDC grouping:
 `CalculatePGACX()` uses anode, left, and right measurements and returns NaN
 when its inputs are incomplete or the left/right sum is zero.
 
+## Event tree output
+
+`OutputManager` owns one ROOT file with two trees:
+
+| Tree | Selection | Branches |
+|---|---|---|
+| `prompt` | `DetectorEvent::prompt == true` | `Emma`, `Tigress` |
+| `bg` | `DetectorEvent::prompt == false` | `Emma`, `Tigress` |
+
+Both trees are written even when one of them has zero entries. The temporary
+TIGRESS schema stores individual core, segment, and BGO `Fragment` objects.
+EMMA stores reduced `EmmaHit` objects and its detector-group collections.
+
+The ROOT dictionaries and shared libraries are generated under `build/lib`.
+An interactive ROOT session can load the data model with:
+
+```cpp
+gSystem->AddDynamicPath("build/lib");
+gSystem->Load("libPHYSICS");
+```
+
+Load the calibration file before using `Fragment::Name()`, `Number()`, or other
+methods that resolve an address through `Channel`.
+
 ## Histogram processing
 
 `DetectorProcess::loop()` consumes completed DetectorEvent objects.
@@ -421,6 +463,7 @@ Earlier pipeline stages also fill:
 flowchart LR
   A["Main thread<br/>local MIDAS-event vector"] -->|"move batch"| B["EventBuilder<br/>multimap owns unique_ptr fragments"]
   B -->|"move built group"| C["EventProcess worker<br/>creates DetectorEvent"]
+  C -->|"copy detector objects"| F["OutputManager<br/>prompt or bg tree"]
   C -->|"copy TIGRESS Fragment<br/>copy EMMA data into EmmaHit"| D["EventProcess queue"]
   D -->|"move DetectorEvent"| E["DetectorProcess worker<br/>fills histograms"]
 ```
@@ -433,7 +476,9 @@ Ownership changes are:
 3. `pop()` moves a built group into EventProcess.
 4. TIGRESS fragments are copied into `fCoreHits`.
 5. EMMA fragments are reduced and copied into `EmmaHit`.
-6. The completed DetectorEvent is moved through the EventProcess queue.
+6. OutputManager copies both detector objects into the selected tree branch
+   buffers and fills one entry.
+7. The completed DetectorEvent is moved through the EventProcess queue.
 
 EventBuilder has a worker thread, but its `loop()` currently only monitors stop
 state and queue emptiness. Event building is performed by the EventProcess
@@ -446,9 +491,11 @@ After the MIDAS input loop finishes:
 
 1. `EventBuilder::Flush()` sets the flushing flag.
 2. While flushing, the normal reorder-depth hold is disabled.
-3. The main thread waits for EventBuilder and EventProcess queues to drain.
+3. The main thread waits for both queues to drain and for EventProcess to
+   publish every built event.
 4. EventBuilder, EventProcess, and DetectorProcess receive `Stop()`.
-5. `Histogramer::Close()` writes the ROOT output file.
+5. `OutputManager::Close()` writes the `prompt` and `bg` trees.
+6. `Histogramer::Close()` writes the histogram ROOT file.
 
 Status output reports:
 
@@ -473,7 +520,7 @@ place. After processing finishes, a final four-line status is printed normally.
 - `fQueue` is dynamically sized; `REORDER_SLACK_NS` controls timestamp
   reorder depth rather than memory capacity.
 - EMMA TDC fragments use the paired MADC timestamp for event building.
-- TIGRESS segment and BGO containers exist, but EventProcess currently routes
-  only `DetType == 0` into TIGRESS core storage.
+- TIGRESS currently persists raw `Fragment` vectors as a temporary analysis
+  schema; `TigressHit::fHits` is not written.
 - Worker threads are detached in their constructors. Shutdown behavior is
   controlled through atomic stop flags and queue-drain checks.

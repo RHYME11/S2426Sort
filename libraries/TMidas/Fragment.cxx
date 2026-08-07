@@ -5,6 +5,8 @@
 #include <globals.h>
 #include <cstdint>
 
+ClassImp(Fragment)
+
 Fragment::Fragment() { } 
 
 Fragment::~Fragment() { } 
@@ -131,6 +133,5 @@ void Fragment::AddCharge(int charge) {
   //printf("eng = %.02f \n", eng); 
   fEnergy.push_back(eng);
 }
-
 
 

@@ -7,5 +7,6 @@ add_subdirectory(Physics)
 
 add_subdirectory(Histogramer)
 
-add_subdirectory(EventProcessing)
+add_subdirectory(OutputManager)
 
+add_subdirectory(EventProcessing)

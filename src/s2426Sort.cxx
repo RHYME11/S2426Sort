@@ -14,6 +14,7 @@
 #include <DetectorProcess.h>
 
 #include <Histogramer.h>
+#include <OutputManager.h>
 #include <Channel.h>
 
 #include <utils.h>
@@ -42,6 +43,7 @@ int main(int argc, char **argv) {
   int run,subrun;
   getRunNumber(argv[1],run,subrun);
   gHist->SetRun(run,subrun);
+  OutputManager::Get()->Open(run,subrun);
 
   printf(" sorting \t %s\n",argv[1]);
   printf(" \trun:    %i\n",run);
@@ -109,7 +111,9 @@ int main(int argc, char **argv) {
 
   EventBuilder::Get()->Flush();
 
-  while(EventBuilder::Get()->Size() > 0 || EventProcess::Get()->Size() > 0) {
+  while(EventBuilder::Get()->Size() > 0
+      || EventBuilder::Get()->Popped() != EventProcess::Get()->Pushed()
+      || EventProcess::Get()->Size() > 0) {
     doStatus(infile, true);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
@@ -127,6 +131,7 @@ int main(int argc, char **argv) {
   printf("\rFinal status:\n");
   doStatus(infile, true, true);
 
+  OutputManager::Close();
   gHist->Close();
   return 0;
 }
@@ -371,7 +376,6 @@ void MakeTigressFragments(uint32_t *pdata,int size,
     words+=1;
   }
 }
-
 
 
 

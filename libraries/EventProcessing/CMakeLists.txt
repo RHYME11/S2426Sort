@@ -11,9 +11,9 @@ target_link_libraries(EVENTBUILDER PRIVATE
   CHANNEL 
   TMIDAS 
   PHYSICS
+  OUTPUTMANAGER
   ${ROOT_LIBRARIES})
 
 #link the compiled libraries above to the final executable.
 target_link_libraries(s2426Sort PRIVATE EVENTBUILDER)        
-
 

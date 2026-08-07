@@ -3,6 +3,7 @@
 
 
 #include <TObject.h>
+#include <vector>
 
 //class Fragment;
 #include <Fragment.h>
@@ -39,13 +40,13 @@ class Tigress {
     void BuildHits();
 
   //private:
-    std::vector<Fragment> fCoreHits;    //!
-    std::vector<Fragment> fSegmentHits; //!
-    std::vector<Fragment> fBGOHits;     //!
+    std::vector<Fragment> fCoreHits;
+    std::vector<Fragment> fSegmentHits;
+    std::vector<Fragment> fBGOHits;
 
-    std::vector<TigressHit> fHits;
+    std::vector<TigressHit> fHits; //!
 
-  ClassDef(Tigress,1)
+  ClassDef(Tigress,2)
 };
 
 #endif
