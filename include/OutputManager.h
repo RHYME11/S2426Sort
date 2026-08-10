@@ -18,7 +18,7 @@ class OutputManager {
     static OutputManager *Get();
 
     // ============== Open ==============
-    // purpose: Open the event ROOT file and create prompt and background trees.
+    // purpose: Open event and fragment ROOT files and create their trees.
     // inputs: run and subrun numbers
     // outputs: none
     void Open(int run, int subrun);
@@ -29,21 +29,33 @@ class OutputManager {
     // outputs: none
     void FillEvent(const DetectorEvent& event);
 
+    // ============== FillFragment ==============
+    // purpose: Fill one time-ordered fragment into the fragment tree.
+    // inputs: fragment
+    // outputs: none
+    void FillFragment(const Fragment& fragment);
+
     // ============== Close ==============
-    // purpose: Write both event trees and close the event ROOT file.
+    // purpose: Write all trees and close both ROOT output files.
     // inputs: none
     // outputs: none
     static void Close();
 
   private:
     std::string fEventFilename;
+    std::string fFragmentFilename;
 
     TFile *fEventFile{nullptr};
+    TFile *fFragmentFile{nullptr};
     TTree *fPromptTree{nullptr};
     TTree *fBgTree{nullptr};
+    TTree *fFragmentTree{nullptr};
 
     DetectorEvent fEvent;
     DetectorEvent *fEventBranch{&fEvent};
+
+    Fragment fFragment;
+    Fragment *fFragmentBranch{&fFragment};
 };
 
 #endif

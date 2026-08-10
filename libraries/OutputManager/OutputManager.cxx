@@ -11,17 +11,27 @@ OutputManager *OutputManager::fOutputManager = 0;
 OutputManager::OutputManager() { }
 
 OutputManager::~OutputManager() {
-  if(!fEventFile) return;
+  if(fEventFile) {
+    fEventFile->cd();
+    if(fPromptTree) fPromptTree->Write();
+    if(fBgTree) fBgTree->Write();
+    fEventFile->Close();
 
-  fEventFile->cd();
-  if(fPromptTree) fPromptTree->Write();
-  if(fBgTree) fBgTree->Write();
-  fEventFile->Close();
+    delete fEventFile;
+    fEventFile = nullptr;
+    fPromptTree = nullptr;
+    fBgTree = nullptr;
+  }
 
-  delete fEventFile;
-  fEventFile = nullptr;
-  fPromptTree = nullptr;
-  fBgTree = nullptr;
+  if(fFragmentFile) {
+    fFragmentFile->cd();
+    if(fFragmentTree) fFragmentTree->Write();
+    fFragmentFile->Close();
+
+    delete fFragmentFile;
+    fFragmentFile = nullptr;
+    fFragmentTree = nullptr;
+  }
 }
 
 // ============== Get ==============
@@ -35,11 +45,11 @@ OutputManager *OutputManager::Get() {
 }
 
 // ============== Open ==============
-// purpose: Open the event ROOT file and create prompt and background trees.
+// purpose: Open event and fragment ROOT files and create their trees.
 // inputs: run and subrun numbers
 // outputs: none
 void OutputManager::Open(int run, int subrun) {
-  if(fEventFile) return;
+  if(fEventFile || fFragmentFile) return;
 
   fEventFilename = Form("event%i_%03i.root", run, subrun);
   fEventFile = TFile::Open(fEventFilename.c_str(), "recreate");
@@ -47,16 +57,27 @@ void OutputManager::Open(int run, int subrun) {
     printf("Failed to open event output file %s\n", fEventFilename.c_str());
     delete fEventFile;
     fEventFile = nullptr;
-    return;
+  } else {
+    fEventFile->cd();
+
+    fPromptTree = new TTree("PromptTree", "Prompt events");
+    fPromptTree->Branch("event", "DetectorEvent", &fEventBranch, 32000, 0);
+
+    fBgTree = new TTree("BgTree", "Background events");
+    fBgTree->Branch("event", "DetectorEvent", &fEventBranch, 32000, 0);
   }
 
-  fEventFile->cd();
-
-  fPromptTree = new TTree("PromptTree", "Prompt events");
-  fPromptTree->Branch("event", "DetectorEvent", &fEventBranch, 32000, 0);
-
-  fBgTree = new TTree("BgTree", "Background events");
-  fBgTree->Branch("event", "DetectorEvent", &fEventBranch, 32000, 0);
+  fFragmentFilename = Form("fragment%i_%03i.root", run, subrun);
+  fFragmentFile = TFile::Open(fFragmentFilename.c_str(), "recreate");
+  if(!fFragmentFile || fFragmentFile->IsZombie()) {
+    printf("Failed to open fragment output file %s\n", fFragmentFilename.c_str());
+    delete fFragmentFile;
+    fFragmentFile = nullptr;
+  } else {
+    fFragmentFile->cd();
+    fFragmentTree = new TTree("FragmentTree", "Time-ordered fragments");
+    fFragmentTree->Branch("Fragment", "Fragment", &fFragmentBranch, 32000, 0);
+  }
 }
 
 // ============== FillEvent ==============
@@ -75,8 +96,19 @@ void OutputManager::FillEvent(const DetectorEvent& event) {
   }
 }
 
+// ============== FillFragment ==============
+// purpose: Fill one time-ordered fragment into the fragment tree.
+// inputs: fragment
+// outputs: none
+void OutputManager::FillFragment(const Fragment& fragment) {
+  if(!fFragmentTree) return;
+
+  fFragment = fragment;
+  fFragmentTree->Fill();
+}
+
 // ============== Close ==============
-// purpose: Write both event trees and close the event ROOT file.
+// purpose: Write all trees and close both ROOT output files.
 // inputs: none
 // outputs: none
 void OutputManager::Close() {

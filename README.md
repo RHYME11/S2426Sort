@@ -51,6 +51,12 @@ Prompt and background detector events are written to:
 event<run>_<subrun>.root
 ```
 
+Deduplicated, time-ordered fragments are written to:
+
+```text
+fragment<run>_<subrun>.root
+```
+
 ## Project layout
 
 ```text
@@ -93,7 +99,7 @@ The main processing components are:
 | `EventProcess` | Route built fragments into `Tigress` and `Emma` objects |
 | `DetectorProcess` | Fill detector and coincidence histograms |
 | `Histogramer` | Create, own, and write ROOT histograms |
-| `OutputManager` | Create, fill, and write prompt/background event trees |
+| `OutputManager` | Create, fill, and write event and fragment trees |
 
 ## Processing pipeline
 
@@ -116,6 +122,8 @@ flowchart TD
   J --> K["EventBuilder::pushBatch()"]
   K --> L["Atomic insertion into timestamp-ordered fQueue"]
   L --> M["EventBuilder::pop()"]
+  M --> V["OutputManager::FillFragment()"]
+  V --> W["fragment<run>_<subrun>.root"]
   M --> N["EventProcess::loop()"]
   N --> O["Tigress::BuildHits() and Emma::BuildHits()"]
   O --> T["OutputManager::FillEvent()"]
@@ -384,7 +392,7 @@ when its inputs are incomplete or the left/right sum is zero.
 
 ## Event tree output
 
-`OutputManager` owns one ROOT file with two trees:
+`OutputManager` writes the detector events to one ROOT file with two trees:
 
 | Tree | Selection | Branches |
 |---|---|---|
@@ -394,6 +402,17 @@ when its inputs are incomplete or the left/right sum is zero.
 Both trees are written even when one of them has zero entries. The temporary
 TIGRESS schema stores individual core, segment, and BGO `Fragment` objects.
 EMMA stores reduced `EmmaHit` objects and its detector-group collections.
+
+The same manager writes a separate fragment ROOT file:
+
+| File | Tree | Selection | Branch |
+|---|---|---|---|
+| `fragment<run>_<subrun>.root` | `FragmentTree` | Deduplicated fragments in timestamp order | `Fragment` |
+
+FragmentTree is filled in `EventBuilder::pop()` immediately before each
+fragment is moved from the timestamp-sorted queue into `builtfrags`. Filling at
+this point preserves global queue order rather than only the order within one
+MIDAS input batch.
 
 The ROOT dictionaries and shared libraries are generated under `build/lib`.
 An interactive ROOT session can load the data model with:
@@ -461,6 +480,7 @@ Earlier pipeline stages also fill:
 flowchart LR
   A["Main thread<br/>local MIDAS-event vector"] -->|"move batch"| B["EventBuilder<br/>multimap owns unique_ptr fragments"]
   B -->|"move built group"| C["EventProcess worker<br/>creates DetectorEvent"]
+  B -->|"copy each ordered Fragment"| G["OutputManager<br/>FragmentTree"]
   C -->|"copy DetectorEvent"| F["OutputManager<br/>PromptTree or BgTree"]
   C -->|"copy TIGRESS Fragment<br/>copy EMMA data into EmmaHit"| D["EventProcess queue"]
   D -->|"move DetectorEvent"| E["DetectorProcess worker<br/>fills histograms"]
@@ -471,7 +491,8 @@ Ownership changes are:
 1. The main thread owns newly decoded fragments in a local
    `vector<unique_ptr<Fragment>>`.
 2. `pushBatch()` moves them into EventBuilder's multimap under one mutex lock.
-3. `pop()` moves a built group into EventProcess.
+3. `pop()` copies each ordered Fragment into FragmentTree, then moves the built
+   group into EventProcess.
 4. TIGRESS fragments are copied into `fCoreHits`.
 5. EMMA fragments are reduced and copied into `EmmaHit`.
 6. OutputManager copies the complete DetectorEvent into the selected tree's
@@ -492,7 +513,8 @@ After the MIDAS input loop finishes:
 3. The main thread waits for both queues to drain and for EventProcess to
    publish every built event.
 4. EventBuilder, EventProcess, and DetectorProcess receive `Stop()`.
-5. `OutputManager::Close()` writes `PromptTree` and `BgTree`.
+5. `OutputManager::Close()` writes `PromptTree`, `BgTree`, and the separately
+   stored `FragmentTree`.
 6. `Histogramer::Close()` writes the histogram ROOT file.
 
 Status output reports:

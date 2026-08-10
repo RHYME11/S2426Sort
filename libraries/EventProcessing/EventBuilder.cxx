@@ -1,6 +1,7 @@
 
 #include<EventBuilder.h>
 #include<Histogramer.h>
+#include<OutputManager.h>
 #include <globals.h>
 #include <climits>
 #include <set>
@@ -112,6 +113,13 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
   if(!fEMTMap.empty()) EMTts = fEMTMap.begin()->first;
   bool buildingbg = false;
   bool buildingprompt = false;
+
+  auto moveToBuilt = [&Builtfrags, this](auto current) {
+    OutputManager::Get()->FillFragment(*current->second);
+    Builtfrags.emplace_back(std::move(current->second));
+    return fQueue.erase(current);
+  };
+
   auto it = fQueue.begin();
   while(it!=fQueue.end()){
     const long thisTime = it->first;
@@ -121,12 +129,11 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
     }
     // ===== END ===== //
     if(EMTts<0){ // fFLushing must be true
-      Builtfrags.emplace_back(std::move(it->second));
-      it = fQueue.erase(it);  
+      it = moveToBuilt(it);
+      continue;
     }
     if(thisTime - EMTts < -1500){ // background events
-      Builtfrags.emplace_back(std::move(it->second));
-      it = fQueue.erase(it);  
+      it = moveToBuilt(it);
       buildingbg = true;
       continue;
     }
@@ -134,8 +141,7 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
       break;
     }
     if((thisTime - EMTts>=-1500) && (thisTime - EMTts<=1500)){ // prompt events
-      Builtfrags.emplace_back(std::move(it->second));
-      it = fQueue.erase(it);  
+      it = moveToBuilt(it);
       buildingprompt = true;
       continue;
     } 
