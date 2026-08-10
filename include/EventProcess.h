@@ -10,18 +10,28 @@
 #include <Fragment.h>
 #include <Tigress.h>
 #include <Emma.h>
+#include <Rtypes.h>
 
 struct DetectorEvent {
-  long timestamp{0};
   long timestampNs{0};
-  bool prompt{false};
 
-  std::unique_ptr<Tigress> tigress;
-  std::unique_ptr<Emma>    emma;
+  Tigress tigress;
+  Emma emma;
+
+  bool Prompt() const {
+    return timestampNs != 0;
+  }
 
   bool Empty() const {
-    return !tigress; //&& !emma && !tip;
+    return timestampNs == 0
+      && tigress.fCoreHits.empty()
+      && tigress.fSegmentHits.empty()
+      && tigress.fBGOHits.empty()
+      && emma.ADC().empty()
+      && emma.TDC().empty();
   }
+
+  ClassDefNV(DetectorEvent,1);
 };
 
 class EventProcess {

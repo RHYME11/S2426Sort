@@ -267,23 +267,21 @@ For each non-empty built group, it creates:
 
 ```cpp
 struct DetectorEvent {
-  long timestamp{0};
   long timestampNs{0};
-  bool prompt{false};
-  std::unique_ptr<Tigress> tigress;
-  std::unique_ptr<Emma> emma;
+  Tigress tigress;
+  Emma emma;
 };
 ```
 
-Both detector objects are allocated for every built group. Fragments are routed
-by `DetType()`:
+Both detector objects are stored by value in every built group. Fragments are
+routed by `DetType()`:
 
 | DetType | Destination |
 |---:|---|
 | 0 | `Tigress::fCoreHits` |
 | 2 | `Tigress::fSegmentHits` |
 | 3 | `Tigress::fBGOHits` |
-| 8 | Set `DetectorEvent::prompt` to true |
+| 8 | Store the EMT nanosecond timestamp in `DetectorEvent::timestampNs` |
 | 13 | `Emma::AddADC()` |
 | 14 | `Emma::AddTDC()` |
 | other | Not stored in a detector object |
@@ -291,14 +289,14 @@ by `DetType()`:
 After routing:
 
 ```cpp
-event.tigress->BuildHits();
-event.emma->BuildHits();
+event.tigress.BuildHits();
+event.emma.BuildHits();
 ```
 
-`OutputManager::FillEvent()` then copies the `Emma` and `Tigress` objects into
-its branch buffers and fills either the `prompt` or `bg` tree. The completed
-`DetectorEvent` is subsequently moved into the EventProcess queue for
-DetectorProcess.
+`OutputManager::FillEvent()` then copies the complete `DetectorEvent` into its
+`event` branch buffer. A nonzero EMT timestamp selects `PromptTree`; a zero
+timestamp selects `BgTree`. The completed event is subsequently moved into the
+EventProcess queue for DetectorProcess.
 
 ## TIGRESS data
 
@@ -390,8 +388,8 @@ when its inputs are incomplete or the left/right sum is zero.
 
 | Tree | Selection | Branches |
 |---|---|---|
-| `prompt` | `DetectorEvent::prompt == true` | `Emma`, `Tigress` |
-| `bg` | `DetectorEvent::prompt == false` | `Emma`, `Tigress` |
+| `PromptTree` | `DetectorEvent::timestampNs != 0` | `event` (`DetectorEvent`) |
+| `BgTree` | `DetectorEvent::timestampNs == 0` | `event` (`DetectorEvent`) |
 
 Both trees are written even when one of them has zero entries. The temporary
 TIGRESS schema stores individual core, segment, and BGO `Fragment` objects.
@@ -402,7 +400,7 @@ An interactive ROOT session can load the data model with:
 
 ```cpp
 gSystem->AddDynamicPath("build/lib");
-gSystem->Load("libPHYSICS");
+gSystem->Load("libOUTPUTMANAGER");
 ```
 
 Load the calibration file before using `Fragment::Name()`, `Number()`, or other
@@ -442,10 +440,10 @@ Current histograms include:
 The current `summary_good` condition is:
 
 ```cpp
-event.emma->Si().size() > 0
-&& event.emma->Anodes().size() > 0
-&& (event.emma->Left().size() > 0
-    || event.emma->Right().size() > 0)
+event.emma.Si().size() > 0
+&& event.emma.Anodes().size() > 0
+&& (event.emma.Left().size() > 0
+    || event.emma.Right().size() > 0)
 ```
 
 Earlier pipeline stages also fill:
@@ -463,7 +461,7 @@ Earlier pipeline stages also fill:
 flowchart LR
   A["Main thread<br/>local MIDAS-event vector"] -->|"move batch"| B["EventBuilder<br/>multimap owns unique_ptr fragments"]
   B -->|"move built group"| C["EventProcess worker<br/>creates DetectorEvent"]
-  C -->|"copy detector objects"| F["OutputManager<br/>prompt or bg tree"]
+  C -->|"copy DetectorEvent"| F["OutputManager<br/>PromptTree or BgTree"]
   C -->|"copy TIGRESS Fragment<br/>copy EMMA data into EmmaHit"| D["EventProcess queue"]
   D -->|"move DetectorEvent"| E["DetectorProcess worker<br/>fills histograms"]
 ```
@@ -476,8 +474,8 @@ Ownership changes are:
 3. `pop()` moves a built group into EventProcess.
 4. TIGRESS fragments are copied into `fCoreHits`.
 5. EMMA fragments are reduced and copied into `EmmaHit`.
-6. OutputManager copies both detector objects into the selected tree branch
-   buffers and fills one entry.
+6. OutputManager copies the complete DetectorEvent into the selected tree's
+   `event` branch buffer and fills one entry.
 7. The completed DetectorEvent is moved through the EventProcess queue.
 
 EventBuilder has a worker thread, but its `loop()` currently only monitors stop
@@ -494,7 +492,7 @@ After the MIDAS input loop finishes:
 3. The main thread waits for both queues to drain and for EventProcess to
    publish every built event.
 4. EventBuilder, EventProcess, and DetectorProcess receive `Stop()`.
-5. `OutputManager::Close()` writes the `prompt` and `bg` trees.
+5. `OutputManager::Close()` writes `PromptTree` and `BgTree`.
 6. `Histogramer::Close()` writes the histogram ROOT file.
 
 Status output reports:

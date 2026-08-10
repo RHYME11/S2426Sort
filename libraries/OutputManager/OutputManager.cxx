@@ -52,26 +52,23 @@ void OutputManager::Open(int run, int subrun) {
 
   fEventFile->cd();
 
-  fPromptTree = new TTree("prompt", "Prompt events");
-  fPromptTree->Branch("Emma", "Emma", &fEmmaBranch, 32000, 0);
-  fPromptTree->Branch("Tigress", "Tigress", &fTigressBranch, 32000, 0);
+  fPromptTree = new TTree("PromptTree", "Prompt events");
+  fPromptTree->Branch("event", "DetectorEvent", &fEventBranch, 32000, 0);
 
-  fBgTree = new TTree("bg", "Background events");
-  fBgTree->Branch("Emma", "Emma", &fEmmaBranch, 32000, 0);
-  fBgTree->Branch("Tigress", "Tigress", &fTigressBranch, 32000, 0);
+  fBgTree = new TTree("BgTree", "Background events");
+  fBgTree->Branch("event", "DetectorEvent", &fEventBranch, 32000, 0);
 }
 
 // ============== FillEvent ==============
-// purpose: Fill one EMMA/TIGRESS event into the selected event tree.
-// inputs: prompt flag, EMMA object, and TIGRESS object
+// purpose: Fill one detector event into the selected event tree.
+// inputs: detector event
 // outputs: none
-void OutputManager::FillEvent(bool prompt, const Emma& emma, const Tigress& tigress) {
+void OutputManager::FillEvent(const DetectorEvent& event) {
   if(!fEventFile) return;
 
-  fEmma = emma;
-  fTigress = tigress;
+  fEvent = event;
 
-  if(prompt) {
+  if(event.Prompt()) {
     if(fPromptTree) fPromptTree->Fill();
   } else {
     if(fBgTree) fBgTree->Fill();

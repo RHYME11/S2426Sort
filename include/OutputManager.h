@@ -3,8 +3,7 @@
 
 #include <string>
 
-#include <Emma.h>
-#include <Tigress.h>
+#include <EventProcess.h>
 
 class TFile;
 class TTree;
@@ -25,10 +24,10 @@ class OutputManager {
     void Open(int run, int subrun);
 
     // ============== FillEvent ==============
-    // purpose: Fill one EMMA/TIGRESS event into the selected event tree.
-    // inputs: prompt flag, EMMA object, and TIGRESS object
+    // purpose: Fill one detector event into the selected event tree.
+    // inputs: detector event
     // outputs: none
-    void FillEvent(bool prompt, const Emma& emma, const Tigress& tigress);
+    void FillEvent(const DetectorEvent& event);
 
     // ============== Close ==============
     // purpose: Write both event trees and close the event ROOT file.
@@ -43,11 +42,8 @@ class OutputManager {
     TTree *fPromptTree{nullptr};
     TTree *fBgTree{nullptr};
 
-    Emma fEmma;
-    Tigress fTigress;
-
-    Emma *fEmmaBranch{&fEmma};
-    Tigress *fTigressBranch{&fTigress};
+    DetectorEvent fEvent;
+    DetectorEvent *fEventBranch{&fEvent};
 };
 
 #endif

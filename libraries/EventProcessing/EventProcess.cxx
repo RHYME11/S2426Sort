@@ -66,55 +66,39 @@ void EventProcess::loop() {
     if(builtfrags.empty()) continue;
 
     DetectorEvent event;
-    event.timestamp     = builtfrags.front()->Timestamp();
-    event.timestampNs   = builtfrags.front()->TimestampNs();
-    event.tigress       = std::make_unique<Tigress>();
-    event.emma          = std::make_unique<Emma>();
-    // =====  begin () ======== //
-    long lasttime = builtfrags.back()->TimestampNs();
-    // ====== end() 
 
     for(auto& frag : builtfrags) {
       if(!frag) continue;
       Histogramer::Fill("DetectorType",100,0,100,frag->DetType());
       switch(frag->DetType()){
         case 0: // TIGRESS core
-          event.tigress->fCoreHits.emplace_back(*frag);
+          event.tigress.fCoreHits.emplace_back(*frag);
           break;
         case 2: // TIGRESS segments
-          event.tigress->fSegmentHits.emplace_back(*frag);
+          event.tigress.fSegmentHits.emplace_back(*frag);
           break;
-        case 3: // TIGRESS core
-          event.tigress->fBGOHits.emplace_back(*frag);
+        case 3: // TIGRESS BGO
+          event.tigress.fBGOHits.emplace_back(*frag);
           break;
         case 8: // EMT
-          event.prompt = true;
+          event.timestampNs   = frag->TimestampNs();
           break;
         case 13: // EMMA ADC
-          event.emma->AddADC(*frag);
+          event.emma.AddADC(*frag);
           break;
         case 14: // EMMA TDC
-          event.emma->AddTDC(*frag);
+          event.emma.AddTDC(*frag);
           break;
         default:
           break;
 
       };
     }
-    // ======== begin() ========== //
-    if(event.prompt) {
-      Histogramer::Fill("Events","prompt: event time length[ns]",1e7,0,1e8,lasttime - event.timestampNs);
-      Histogramer::Fill("Events","prompt: event size",100,0,100, builtfrags.size());
-    }else{
-      Histogramer::Fill("Events","delay:  event time length[ns]",1e7,0,1e8,lasttime - event.timestampNs);
-      Histogramer::Fill("Events","delay: event size",100,0,100, builtfrags.size());
-    }
-    // ========= end() =========== //   
  
-    event.tigress->BuildHits();
-    event.emma->BuildHits();
+    event.tigress.BuildHits();
+    event.emma.BuildHits();
 
-    OutputManager::Get()->FillEvent(event.prompt, *event.emma, *event.tigress);
+    OutputManager::Get()->FillEvent(event);
 
     push(std::move(event));
   }

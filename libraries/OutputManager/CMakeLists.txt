@@ -1,6 +1,11 @@
 #this will compile the current library.
 add_library(OUTPUTMANAGER SHARED OutputManager.cxx)
 
+root_generate_dictionary(G__OUTPUTMANAGER
+  EventProcess.h
+  MODULE OUTPUTMANAGER
+  LINKDEF LinkDef.h)
+
 target_link_libraries(OUTPUTMANAGER PRIVATE
   PHYSICS
   TMIDAS
