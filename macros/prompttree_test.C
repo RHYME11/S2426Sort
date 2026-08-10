@@ -1,23 +1,19 @@
 {
 
-  //TH1D *tigsize = new TH1D("tigsize","tigress core size in prompt",100,0,100);
-  //TH1D *emsize  = new TH1D("emsize" ,"emma size in prompt",100,0,100);
-
-  Tigress *tig = nullptr;
-  Emma *em = nullptr;
-  prompt->SetBranchAddress("Tigress",&tig);
-  prompt->SetBranchAddress("Emma", &em);
-  long nentries = prompt->GetEntries();
+  Channel::Read("cal/CalibrationFile_May1526_pol1.cal");
+  DetectorEvent *eve = nullptr;
+  PromptTree->SetBranchAddress("event", &eve);
+  long nentries = PromptTree->GetEntries();
   long x = 0;
   int count = 0;
   for(x;x<nentries;x++){
-    prompt->GetEntry(x);
-    if(tig->fCoreHits.size()==0){
+    PromptTree->GetEntry(x);
+    if(eve->tigress.fCoreHits.size()==0 && eve->emma.ADC().size()==0 && eve->emma.TDC().size()==0){
       printf("entry = %lu\n",x);
       count++;
     }
   }
-
+  printf("count=%i\n",count)
 
 
 }

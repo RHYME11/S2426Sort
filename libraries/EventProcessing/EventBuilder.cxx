@@ -132,7 +132,7 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
       it = moveToBuilt(it);
       continue;
     }
-    if(thisTime - EMTts < -1500){ // background events
+    if(thisTime - EMTts < -BUILD_WINDOW_NS){ // background events
       it = moveToBuilt(it);
       buildingbg = true;
       continue;
@@ -140,7 +140,7 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
     if(buildingbg){
       break;
     }
-    if((thisTime - EMTts>=-1500) && (thisTime - EMTts<=1500)){ // prompt events
+    if((thisTime - EMTts>=-BUILD_WINDOW_NS) && (thisTime - EMTts<=BUILD_WINDOW_NS)){ // prompt events
       it = moveToBuilt(it);
       buildingprompt = true;
       continue;
