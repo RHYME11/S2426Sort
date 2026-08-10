@@ -1,10 +1,11 @@
 
-#this will compile the current library.
 add_library(CHANNEL SHARED Channel.cxx)
-#root_generate_dictionary(G__Channel Channel.h MODULE CHANNEL LINKDEF Linkdef.h)
+
+root_generate_dictionary(G__Channel
+  Channel.h
+  MODULE CHANNEL
+  LINKDEF Linkdef.h)
+
 target_link_libraries(CHANNEL PRIVATE ${ROOT_LIBRARIES})
 
-#link the compiled libraries above to the final executable.
-target_link_libraries(s2426Sort PRIVATE CHANNEL)        
-
-
+target_link_libraries(s2426Sort PRIVATE CHANNEL)

@@ -1,51 +1,81 @@
 
-#include <Channel.h>
+#include "Channel.h"
 
-#include<fstream>
-#include<sstream>
+#include <fstream>
+#include <sstream>
 
-std::unordered_map<int,Channel*> Channel::fChannelMap;
+ClassImp(Channel)
 
-void   Channel::Read(std::string fFile) { 
+std::unordered_map<int, Channel*> Channel::fChannelMap;
+
+//============== Channel ==============
+// Purpose: Create a channel from one definition line.
+// Inputs: Space-separated channel definition.
+// Outputs: Initialized channel object.
+Channel::Channel(std::string line)
+{
+  Set(line);
+}
+
+//============== Read ==============
+// Purpose: Read channel definitions from a calibration file.
+// Inputs: Calibration file path.
+// Outputs: Populated static channel map.
+void Channel::Read(std::string fFile)
+{
   std::ifstream file(fFile.c_str());
   std::string line;
-  Channel *c = 0;
-  if(fChannelMap.size()==0) {
+  Channel* c = nullptr;
+  if(fChannelMap.empty()) {
     c = new Channel("dummy 999 0xffff 0 1 0");
     fChannelMap[c->fAddress] = c;
   }
-  while(getline(file,line)) {
+  while(getline(file, line)) {
     c = new Channel(line);
-    //cSet(line);
-    //c.Print();
     fChannelMap[c->fAddress] = c;
   }
-} 
+}
 
-void   Channel::Set(std::string line) { 
-  //printf("%s\n",line.c_str());
+//============== Set ==============
+// Purpose: Parse one channel definition.
+// Inputs: Space-separated channel definition.
+// Outputs: Updated channel fields.
+void Channel::Set(std::string line)
+{
   std::stringstream ss(line);
-  ss >> fName;    // 1 - name
-  ss >> fNumber;  // 2 - number
-  ss >> std::hex >> fAddress; // 3 - address
+  ss >> fName;
+  ss >> fNumber;
+  ss >> std::hex >> fAddress;
   double temp;
-  while (ss >> temp) fCalPars.push_back(temp);
+  while(ss >> temp) {
+    fCalPars.push_back(temp);
+  }
 }
 
-Channel *Channel::Get(int address) { 
-  if(fChannelMap.count(address))
+//============== Get ==============
+// Purpose: Find a channel by address.
+// Inputs: Numeric channel address.
+// Outputs: Matching channel or the fallback channel.
+Channel* Channel::Get(int address)
+{
+  if(fChannelMap.count(address) != 0u) {
     return fChannelMap[address];
+  }
   return fChannelMap[0xffff];
-
 }
 
-
-void Channel::Print(Option_t *opt) const {
-  printf("channel[0x%x]\n",fAddress);
-  printf("\tName:     %s\n",fName.c_str());
-  printf("\tNumber:   %i\n",fNumber);
-  printf("\tCal Pars: "); for(auto i : fCalPars) printf("%.04f  ",i);
+//============== Print ==============
+// Purpose: Print channel metadata and calibration parameters.
+// Inputs: Unused ROOT option.
+// Outputs: Text written to standard output.
+void Channel::Print(Option_t*) const
+{
+  printf("channel[0x%x]\n", fAddress);
+  printf("\tName:     %s\n", fName.c_str());
+  printf("\tNumber:   %i\n", fNumber);
+  printf("\tCal Pars: ");
+  for(auto parameter : fCalPars) {
+    printf("%.04f  ", parameter);
+  }
   printf("\n");
-
 }
-

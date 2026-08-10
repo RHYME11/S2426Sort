@@ -32,6 +32,19 @@ make
 ./bin/s2426Sort path/to/run.mid
 ```
 
+The build creates `build/lib/libCHANNEL.dylib` on macOS or
+`build/lib/libCHANNEL.so` on Linux, together with its ROOT dictionary. Load the
+library in ROOT with:
+
+```cpp
+gSystem->Load("build/lib/libCHANNEL.dylib");
+TClass::GetClass("Channel");
+```
+
+The load call returns `0` when newly loaded and `1` when it was already loaded.
+Keep the generated `libCHANNEL_rdict.pcm` and `libCHANNEL.rootmap` beside the
+shared library.
+
 The calibration file is currently selected in `src/s2426Sort.cxx`:
 
 ```text
