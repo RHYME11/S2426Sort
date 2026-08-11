@@ -12,6 +12,12 @@
 #include <algorithm>
 #include <utility>
 
+namespace {
+
+constexpr int kEmtAddress = 0x140f;
+
+}  // namespace
+
 
 EventProcess *EventProcess::fEventProcess = 0;
 
@@ -69,8 +75,16 @@ void EventProcess::loop() {
 
     for(auto& frag : builtfrags) {
       if(!frag) continue;
-      Histogramer::Fill("DetectorType",100,0,100,frag->DetType());
-      switch(frag->DetType()){
+
+      const int detType = frag->DetType();
+      Histogramer::Fill("DetectorType",100,0,100,detType);
+
+      if(detType == 8 && frag->Address() == kEmtAddress) {
+        event.timestampNs = frag->TimestampNs();
+        continue;
+      }
+
+      switch(detType){
         case 0: // TIGRESS core
           event.tigress.fCoreHits.emplace_back(*frag);
           break;
@@ -79,9 +93,6 @@ void EventProcess::loop() {
           break;
         case 3: // TIGRESS BGO
           event.tigress.fBGOHits.emplace_back(*frag);
-          break;
-        case 8: // EMT
-          event.timestampNs   = frag->TimestampNs();
           break;
         case 13: // EMMA ADC
           event.emma.AddADC(*frag);

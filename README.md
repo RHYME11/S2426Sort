@@ -210,6 +210,11 @@ For each non-null fragment, it:
 4. Removes keys observed in the preceding GRF4 batch, keeping the earlier hit.
 5. Moves the retained fragments into `fQueue` and increments `fPushed`.
 
+Only fragments with both `DetType() == 8` and `Address() == 0x140f` are
+registered in `fEMTMap` as EMT event-building triggers. A raw DetType 8
+fragment with another address remains available in FragmentTree but does not
+start prompt event reconstruction.
+
 Only the preceding batch's observed key set is retained, so duplicate tracking
 has bounded memory use. Keys remain recorded even when their current fragments
 are removed by the cross-batch check; this also suppresses the same hit when it
@@ -301,15 +306,16 @@ struct DetectorEvent {
 };
 ```
 
-Both detector objects are stored by value in every built group. Fragments are
-routed by `DetType()`:
+Both detector objects are stored by value in every built group. A fragment is
+recognized as the EMT only when `DetType() == 8` and `Address() == 0x140f`; its
+nanosecond timestamp is stored in `DetectorEvent::timestampNs`. Other fragments
+are routed by `DetType()`:
 
 | DetType | Destination |
 |---:|---|
 | 0 | `Tigress::fCoreHits` |
 | 2 | `Tigress::fSegmentHits` |
 | 3 | `Tigress::fBGOHits` |
-| 8 | Store the EMT nanosecond timestamp in `DetectorEvent::timestampNs` |
 | 13 | `Emma::AddADC()` |
 | 14 | `Emma::AddTDC()` |
 | other | Not stored in a detector object |

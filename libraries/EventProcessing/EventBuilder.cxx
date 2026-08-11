@@ -6,6 +6,13 @@
 #include <climits>
 #include <set>
 #include <utility>
+
+namespace {
+
+constexpr int kEmtAddress = 0x140f;
+
+}  // namespace
+
 EventBuilder *EventBuilder::fEventBuilder = 0;
 
 EventBuilder::EventBuilder() {
@@ -88,7 +95,8 @@ void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
     }
 
     const long ts = frag->TimestampNs();
-    if(frag->DetType() == 8 && fEMTMap.find(ts) == fEMTMap.end()) {
+    if(frag->DetType() == 8 && frag->Address() == kEmtAddress &&
+        fEMTMap.find(ts) == fEMTMap.end()) {
       fEMTMap.emplace(ts, frag.get());
     }
     fQueue.emplace(ts, std::move(frag));
