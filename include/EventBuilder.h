@@ -4,7 +4,9 @@
 #include <vector>
 #include <map>
 #include <mutex>
+#include <set>
 #include <thread>
+#include <utility>
 
 #include <atomic>
 
@@ -60,6 +62,8 @@ class EventBuilder {
     mutable std::mutex fMutex;
     std::multimap<long, std::unique_ptr<Fragment>> fQueue;// for all fragments
     std::map<long, Fragment*> fEMTMap; // for EMT only
+    // Retain one GRF4 batch of observed keys to catch adjacent-batch duplicates.
+    std::set<std::pair<int, long>> fPreviousBatchKeys;
 
     std::atomic<uint32_t> fPushed{0};
     std::atomic<uint32_t> fPopped{0};

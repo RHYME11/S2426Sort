@@ -38,7 +38,7 @@ void EventBuilder::push(std::unique_ptr<Fragment> frag) {
 }
 
 // ============== pushBatch ==============
-// Purpose: Remove exact batch-local duplicates and atomically publish fragments.
+// Purpose: Remove exact same-batch and adjacent-batch GRF4 duplicates.
 // Inputs: Fragments decoded from one MIDAS event.
 // Outputs: Unique fragments inserted into fQueue and EMT timestamps into fEMTMap.
 void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
@@ -46,9 +46,8 @@ void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
     return;
   }
 
-  using DuplicateKey = std::pair<int, long>;
-
-  std::set<DuplicateKey> seen;
+  std::lock_guard<std::mutex> lock(fMutex);
+  std::set<std::pair<int, long>> currentBatchKeys;
   std::vector<std::unique_ptr<Fragment>> uniqueFragments;
   uniqueFragments.reserve(fragments.size());
 
@@ -57,13 +56,19 @@ void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
       continue;
     }
 
-    const int number = frag->Number();
-    const bool duplicateCandidate = number < 720 || number == 849;
+    const long ts = frag->TimestampNs();
+    if(ts > fLatestTimestampNsSeen) {
+      fLatestTimestampNsSeen = ts;
+    }
 
-    if(duplicateCandidate) {
-      const DuplicateKey key{frag->Address(), frag->TimestampNs()};
-      const bool firstOccurrence = seen.emplace(key).second;
-      if(!firstOccurrence) {
+    const int number = frag->Number();
+    if(number < 720 || number == 849) {
+      const std::pair<int, long> key = std::make_pair(frag->Address(), ts);
+      const bool firstInCurrentBatch = currentBatchKeys.emplace(key).second;
+      if(!firstInCurrentBatch) {
+        continue;
+      }
+      if(fPreviousBatchKeys.find(key) != fPreviousBatchKeys.end()) {
         continue;
       }
     }
@@ -71,11 +76,11 @@ void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
     uniqueFragments.emplace_back(std::move(frag));
   }
 
-  if(uniqueFragments.empty()) {
-    return;
+  // Keep observed keys even when their fragments matched the previous batch.
+  // This also suppresses one hit repeated across three consecutive batches.
+  if(!currentBatchKeys.empty()) {
+    fPreviousBatchKeys = std::move(currentBatchKeys);
   }
-
-  std::lock_guard<std::mutex> lock(fMutex);
 
   for(auto& frag : uniqueFragments) {
     if(!frag) {
@@ -83,9 +88,6 @@ void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
     }
 
     const long ts = frag->TimestampNs();
-    if(ts > fLatestTimestampNsSeen) {
-      fLatestTimestampNsSeen = ts;
-    }
     if(frag->DetType() == 8 && fEMTMap.find(ts) == fEMTMap.end()) {
       fEMTMap.emplace(ts, frag.get());
     }

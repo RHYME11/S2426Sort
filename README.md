@@ -204,10 +204,17 @@ void EventBuilder::pushBatch(
 
 For each non-null fragment, it:
 
-1. Calculates `ts = frag->TimestampNs()`.
-2. Updates `fLatestTimestampNsSeen` when `ts` is newer.
-3. Moves the fragment into `fQueue`.
-4. Increments `fPushed`.
+1. Calculates `ts = frag->TimestampNs()` and updates the latest timestamp.
+2. For channels below 720 and channel 849, records `(Address, TimestampNs)`.
+3. Removes repeated keys within the current MIDAS-event batch.
+4. Removes keys observed in the preceding GRF4 batch, keeping the earlier hit.
+5. Moves the retained fragments into `fQueue` and increments `fPushed`.
+
+Only the preceding batch's observed key set is retained, so duplicate tracking
+has bounded memory use. Keys remain recorded even when their current fragments
+are removed by the cross-batch check; this also suppresses the same hit when it
+is repeated in three consecutive batches. Other EMMA ADC and TDC channels do
+not participate in duplicate cleaning.
 
 The complete batch is inserted under one lock. `EventBuilder::pop()` therefore
 cannot run between MADC and EMMT insertion for the same MIDAS event.
@@ -503,7 +510,8 @@ Ownership changes are:
 
 1. The main thread owns newly decoded fragments in a local
    `vector<unique_ptr<Fragment>>`.
-2. `pushBatch()` moves them into EventBuilder's multimap under one mutex lock.
+2. `pushBatch()` removes same-batch and adjacent-batch GRF4 duplicates, then
+   moves the retained fragments into EventBuilder's multimap under one mutex.
 3. `pop()` copies each ordered Fragment into FragmentTree, then moves the built
    group into EventProcess.
 4. TIGRESS fragments are copied into `fCoreHits`.
