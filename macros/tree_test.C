@@ -6,12 +6,12 @@ void PrintFrag(long ts){
   FragmentTree->SetBranchAddress("Fragment", &ftg);
   long nentries = FragmentTree->GetEntries();                                                      
   long x = 0;                                                                                    
-  double refdt = 3e3;                                                                                 
+  double refdt = 80e3;                                                                                 
   for(x=0;x<nentries;x++){                                                                         
     FragmentTree->GetEntry(x);
     long thisTime = ftg->TimestampNs();
     double dt = thisTime -ts;
-    //if(ftg->DetType()==999) continue;
+    if(ftg->Number()==999) continue;
     if(dt<-refdt){
       continue;
     }else if(dt>=-refdt && dt<0){
@@ -23,9 +23,29 @@ void PrintFrag(long ts){
     }else{
       break;
     }         
-  }                                                                                              
-                                                                                                 
+  }                                                                                           
 }                                                                                                 
+
+void SearchEMMAFrag(long ts){
+  Channel::Read("cal/CalibrationFile_May1526_pol1.cal");
+  TFile *infile = TFile::Open("fragment62140_001.root");
+  TTree *FragmentTree = (TTree *)infile->Get("FragmentTree");                                         
+  Fragment *ftg = nullptr;
+  FragmentTree->SetBranchAddress("Fragment", &ftg);
+  long nentries = FragmentTree->GetEntries();                                                      
+  long x = 0;                                                                                    
+  double refdt = 1.5e3;                                                                                 
+  for(x=0;x<nentries;x++){                                                                         
+    FragmentTree->GetEntry(x);
+    if(ftg->Number()<849) continue;
+    double dt = ftg->TimestampNs() - ts;
+    if(dt==0) printf("// ========== entry = %lu (%s) ======== //\n",x,ftg->Name().c_str());
+    if(fabs(dt)<=refdt){
+      printf("entry=%lu, dt = %.0f, %s(%04x): t = %lu, c=%.2f\n",x,dt,ftg->Name().c_str(),ftg->Address(),ftg->TimestampNs(), ftg->Charge());
+    }
+  }
+  printf("Loop over!\n");
+}
                                                                                                  
 
 void PrintPrompt(long ts){ 
