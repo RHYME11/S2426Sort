@@ -290,6 +290,9 @@ void MakeEmmaTDC(uint32_t* pdata,int size,long adcTimestamp,
         tmpAddress = (datum>>16)&0x300; 
         break;
       case 0x0:  //tdc measurement
+        if((datum & 0x04000000U) != 0U){
+          break; // skip trailing measurement
+        }
         addresses.push_back((datum >> 21) & 0x1f);  
         charges.push_back(datum & 0x1fffff);
         break;
