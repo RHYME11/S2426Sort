@@ -12,13 +12,6 @@
 #include <algorithm>
 #include <utility>
 
-namespace {
-
-constexpr int kEmtAddress = 0x140f;
-
-}  // namespace
-
-
 EventProcess *EventProcess::fEventProcess = 0;
 
 EventProcess::EventProcess() {
@@ -79,9 +72,9 @@ void EventProcess::loop() {
       const int detType = frag->DetType();
       Histogramer::Fill("DetectorType",100,0,100,detType);
 
-      if(detType == 8 && frag->Address() == kEmtAddress) {
+      const int channel = frag->Address() & 0xff;
+      if(detType == 14 && channel >= 0 && channel <= 2) {
         event.timestampNs = frag->TimestampNs();
-        continue;
       }
 
       switch(detType){

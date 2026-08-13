@@ -205,15 +205,17 @@ void EventBuilder::pushBatch(
 For each non-null fragment, it:
 
 1. Calculates `ts = frag->TimestampNs()` and updates the latest timestamp.
-2. For channels below 720 and channel 849, records `(Address, TimestampNs)`.
-3. Removes repeated keys within the current MIDAS-event batch.
-4. Removes keys observed in the preceding GRF4 batch, keeping the earlier hit.
+2. For GRF4 fragments, records `(Address, TimestampNs)`.
+3. Removes repeated GRF4 keys within the current MIDAS-event batch.
+4. Removes GRF4 keys observed in the preceding MIDAS-event batch, keeping the
+   earlier hit.
 5. Moves the retained fragments into `fQueue` and increments `fPushed`.
 
-Only fragments with both `DetType() == 8` and `Address() == 0x140f` are
-registered in `fEMTMap` as EMT event-building triggers. A raw DetType 8
-fragment with another address remains available in FragmentTree but does not
-start prompt event reconstruction.
+Before insertion into `fQueue`, EMMT decoding keeps only leading measurements;
+trailing measurements are discarded. An EMMA TDC anode (TDC channel 0--2) is
+registered in `fRefMap` as the event-building reference. Multiple correlated
+EMMA fragments share the paired MADC timestamp, so their time difference from
+the anode reference is 0 ns.
 
 Only the preceding batch's observed key set is retained, so duplicate tracking
 has bounded memory use. Keys remain recorded even when their current fragments
@@ -254,39 +256,42 @@ fixed fragment capacity; it grows dynamically as required.
 Event building always compares nanosecond timestamps returned by
 `TimestampNs()`.
 
-### Build window
+### Reference time and build window
 
-The current constants in `EventBuilder.h` are:
-
-```cpp
-static constexpr long BUILD_WINDOW_NS  = 5000;
-static constexpr long REORDER_SLACK_NS = 500000000;
-```
-
-The build window is therefore 5 μs. `EventBuilder::pop()` uses the earliest
-queued timestamp as `firstTime` and moves currently queued fragments while:
+The event-building reference is the EMMA TDC anode timestamp. The asymmetric
+window is represented in `EventBuilder.h` by its lower and upper bounds:
 
 ```cpp
-std::labs(thisTime - firstTime) <= BUILD_WINDOW_NS
+static constexpr std::pair<long, long> BUILD_WINDOW_NS = {-400, 2600};
 ```
 
-This is an anchored window: every included fragment is compared with the first
-fragment, not with the previously included fragment.
+For each queued fragment, `EventBuilder::pop()` calculates:
+
+```cpp
+dt = thisTime - refTime;
+```
+
+The fragment belongs to the prompt event when:
+
+```cpp
+BUILD_WINDOW_NS.first <= dt && dt <= BUILD_WINDOW_NS.second
+```
+
+Thus correlated EMMA fragments have `dt == 0`, while GRF4 fragments are
+accepted in `[-400, 2600] ns`. Fragments outside this time window are emitted
+as background groups and subsequently written to `BgTree`.
 
 ### Reorder depth
 
 During normal reading, EventBuilder calculates:
 
 ```cpp
-safeTime =
-  fLatestTimestampNsSeen
-  - BUILD_WINDOW_NS
-  - REORDER_SLACK_NS;
+safeTime = fLatestTimestampNsSeen - REORDER_SLACK_NS;
 ```
 
 If the earliest queued fragment is newer than `safeTime`, `pop()` waits for
-more input. The 500 ms value is a timestamp reorder depth, not a fixed memory
-buffer size.
+more input. The current 1 s value is a timestamp reorder depth, not a fixed
+memory buffer size.
 
 ## Detector event processing
 
@@ -306,10 +311,11 @@ struct DetectorEvent {
 };
 ```
 
-Both detector objects are stored by value in every built group. A fragment is
-recognized as the EMT only when `DetType() == 8` and `Address() == 0x140f`; its
-nanosecond timestamp is stored in `DetectorEvent::timestampNs`. Other fragments
-are routed by `DetType()`:
+Both detector objects are stored by value in every built group. An EMMA TDC
+anode (TDC channel 0--2) supplies the reference timestamp stored in
+`DetectorEvent::timestampNs`. The same anode fragment is also retained and
+routed to `Emma::AddTDC()`; the reference-time assignment must not skip normal
+TDC processing. Fragments are routed by `DetType()`:
 
 | DetType | Destination |
 |---:|---|
@@ -328,9 +334,9 @@ event.emma.BuildHits();
 ```
 
 `OutputManager::FillEvent()` then copies the complete `DetectorEvent` into its
-`event` branch buffer. A nonzero EMT timestamp selects `PromptTree`; a zero
-timestamp selects `BgTree`. The completed event is subsequently moved into the
-EventProcess queue for DetectorProcess.
+`event` branch buffer. A nonzero anode reference timestamp selects
+`PromptTree`; a zero reference timestamp selects `BgTree`. The completed event
+is subsequently moved into the EventProcess queue for DetectorProcess.
 
 ## TIGRESS data
 
@@ -387,6 +393,10 @@ TimestampUnit  50 ns
 Charge         decoded TDC measurement
 ```
 
+Only leading TDC measurements are stored. A measurement word with the trailing
+edge flag set is discarded before a `Fragment` is created or submitted to
+EventBuilder.
+
 ### Emma hit grouping
 
 `Emma::AddADC()` and `Emma::AddTDC()` copy reduced fragment quantities into
@@ -422,8 +432,8 @@ when its inputs are incomplete or the left/right sum is zero.
 
 | Tree | Selection | Branches |
 |---|---|---|
-| `PromptTree` | `DetectorEvent::timestampNs != 0` | `event` (`DetectorEvent`) |
-| `BgTree` | `DetectorEvent::timestampNs == 0` | `event` (`DetectorEvent`) |
+| `PromptTree` | EMMA anode reference present (`DetectorEvent::timestampNs != 0`) | `event` (`DetectorEvent`) |
+| `BgTree` | Outside the anode-reference window (`DetectorEvent::timestampNs == 0`) | `event` (`DetectorEvent`) |
 
 Both trees are written even when one of them has zero entries. The temporary
 TIGRESS schema stores individual core, segment, and BGO `Fragment` objects.
@@ -516,8 +526,9 @@ Ownership changes are:
 
 1. The main thread owns newly decoded fragments in a local
    `vector<unique_ptr<Fragment>>`.
-2. `pushBatch()` removes same-batch and adjacent-batch GRF4 duplicates, then
-   moves the retained fragments into EventBuilder's multimap under one mutex.
+2. `pushBatch()` removes within-MIDAS-event and adjacent-MIDAS-event GRF4
+   duplicates, registers EMMA anode reference timestamps, then moves the
+   retained fragments into EventBuilder's multimap under one mutex.
 3. `pop()` copies each ordered Fragment into FragmentTree, then moves the built
    group into EventProcess.
 4. TIGRESS fragments are copied into `fCoreHits`.

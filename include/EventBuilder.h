@@ -56,12 +56,12 @@ class EventBuilder {
     long fLatestTimestampNsSeen{0};
     std::atomic_bool fFlushing{false};
 
-    static constexpr long BUILD_WINDOW_NS  = 1500;
+    static constexpr std::pair<long, long> BUILD_WINDOW_NS = {-400, 2600};
     static constexpr long REORDER_SLACK_NS = 10e8;
 
     mutable std::mutex fMutex;
     std::multimap<long, std::unique_ptr<Fragment>> fQueue;// for all fragments
-    std::map<long, Fragment*> fEMTMap; // for EMT only
+    std::map<long, Fragment*> fRefMap; // for EMMA anode reference timestamps
     // Retain one GRF4 batch of observed keys to catch adjacent-batch duplicates.
     std::set<std::pair<int, long>> fPreviousBatchKeys;
 

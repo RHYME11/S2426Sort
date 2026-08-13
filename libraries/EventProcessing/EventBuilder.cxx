@@ -7,12 +7,6 @@
 #include <set>
 #include <utility>
 
-namespace {
-
-constexpr int kEmtAddress = 0x140f;
-
-}  // namespace
-
 EventBuilder *EventBuilder::fEventBuilder = 0;
 
 EventBuilder::EventBuilder() {
@@ -47,7 +41,7 @@ void EventBuilder::push(std::unique_ptr<Fragment> frag) {
 // ============== pushBatch ==============
 // Purpose: Remove exact same-batch and adjacent-batch GRF4 duplicates.
 // Inputs: Fragments decoded from one MIDAS event.
-// Outputs: Unique fragments inserted into fQueue and EMT timestamps into fEMTMap.
+// Outputs: Unique fragments inserted into fQueue and anode timestamps into fRefMap.
 void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
   if(fragments.empty()) {
     return;
@@ -69,7 +63,7 @@ void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
     }
 
     const int number = frag->Number();
-    if(number < 720 || number == 849) {
+    if(number < 720) {
       const std::pair<int, long> key = std::make_pair(frag->Address(), ts);
       const bool firstInCurrentBatch = currentBatchKeys.emplace(key).second;
       if(!firstInCurrentBatch) {
@@ -95,9 +89,10 @@ void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
     }
 
     const long ts = frag->TimestampNs();
-    if(frag->DetType() == 8 && frag->Address() == kEmtAddress &&
-        fEMTMap.find(ts) == fEMTMap.end()) {
-      fEMTMap.emplace(ts, frag.get());
+    const int channel = frag->Address() & 0xff;
+    if(frag->DetType() == 14 && channel >= 0 && channel <= 2 &&
+        fRefMap.find(ts) == fRefMap.end()) {
+      fRefMap.emplace(ts, frag.get());
     }
     fQueue.emplace(ts, std::move(frag));
     fPushed++;
@@ -112,15 +107,15 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
   const long firstTime = fQueue.begin()->first;
 
   if(!fFlushing) {
-    if(fEMTMap.empty()) return false;
+    if(fRefMap.empty()) return false;
     const long safeTime = fLatestTimestampNsSeen - REORDER_SLACK_NS;
     if(firstTime > safeTime) {
       return false;
     }
   }
 
-  long EMTts = -1;
-  if(!fEMTMap.empty()) EMTts = fEMTMap.begin()->first;
+  long refTime = -1;
+  if(!fRefMap.empty()) refTime = fRefMap.begin()->first;
   bool buildingbg = false;
   bool buildingprompt = false;
 
@@ -133,16 +128,17 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
   auto it = fQueue.begin();
   while(it!=fQueue.end()){
     const long thisTime = it->first;
+    const long dt = thisTime - refTime;
     // ==== BEGIN ==== //
     if(it->second.get()->Number()>849 && it->second.get()->Number()<874) {
-      Histogramer::Fill("EventBuilder","dt = EMA - EMTts", 300,-1500,1500,thisTime - EMTts);
+      Histogramer::Fill("EventBuilder","dt = EMMA - refTime", 300,-400,2600,dt);
     }
     // ===== END ===== //
-    if(EMTts<0){ // fFLushing must be true
+    if(refTime<0){ // fFlushing must be true
       it = moveToBuilt(it);
       continue;
     }
-    if(thisTime - EMTts < -BUILD_WINDOW_NS){ // background events
+    if(dt < BUILD_WINDOW_NS.first){ // background events
       it = moveToBuilt(it);
       buildingbg = true;
       continue;
@@ -150,13 +146,13 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
     if(buildingbg){
       break;
     }
-    if((thisTime - EMTts>=-BUILD_WINDOW_NS) && (thisTime - EMTts<=BUILD_WINDOW_NS)){ // prompt events
+    if(dt >= BUILD_WINDOW_NS.first && dt <= BUILD_WINDOW_NS.second){ // prompt events
       it = moveToBuilt(it);
       buildingprompt = true;
       continue;
     } 
     if(buildingprompt){
-      fEMTMap.erase(fEMTMap.begin());
+      fRefMap.erase(fRefMap.begin());
       break;
     }
   } // loop fQueue over
