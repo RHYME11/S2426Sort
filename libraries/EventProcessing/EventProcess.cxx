@@ -2,14 +2,11 @@
 #include<EventProcess.h>
 
 #include<EventBuilder.h>
-#include<Histogramer.h>
 #include<OutputManager.h>
 
 #include<globals.h>
 
 
-#include <map>
-#include <algorithm>
 #include <utility>
 
 EventProcess *EventProcess::fEventProcess = 0;
@@ -64,43 +61,23 @@ void EventProcess::loop() {
     }
     if(builtfrags.empty()) continue;
 
-    DetectorEvent event;
+    std::vector<Fragment> fragments;
+    fragments.reserve(builtfrags.size());
+    long referenceTimestampNs = -1;
 
-    for(auto& frag : builtfrags) {
+    for(const auto& frag : builtfrags) {
       if(!frag) continue;
 
       const int detType = frag->DetType();
-      Histogramer::Fill("DetectorType",100,0,100,detType);
-
       const int channel = frag->Address() & 0xff;
-      if(detType == 14 && channel >= 0 && channel <= 2) {
-        event.timestampNs = frag->TimestampNs();
+      if(referenceTimestampNs < 0 && detType == 14 && channel >= 0 && channel <= 2) {
+        referenceTimestampNs = frag->TimestampNs();
       }
 
-      switch(detType){
-        case 0: // TIGRESS core
-          event.tigress.fCoreHits.emplace_back(*frag);
-          break;
-        case 2: // TIGRESS segments
-          event.tigress.fSegmentHits.emplace_back(*frag);
-          break;
-        case 3: // TIGRESS BGO
-          event.tigress.fBGOHits.emplace_back(*frag);
-          break;
-        case 13: // EMMA ADC
-          event.emma.AddADC(*frag);
-          break;
-        case 14: // EMMA TDC
-          event.emma.AddTDC(*frag);
-          break;
-        default:
-          break;
-
-      };
+      fragments.emplace_back(*frag);
     }
- 
-    event.tigress.BuildHits();
-    event.emma.BuildHits();
+
+    DetectorEvent event(std::move(fragments), referenceTimestampNs);
 
     OutputManager::Get()->FillEvent(event);
 

@@ -113,7 +113,8 @@ int main(int argc, char **argv) {
 
   while(EventBuilder::Get()->Size() > 0
       || EventBuilder::Get()->Popped() != EventProcess::Get()->Pushed()
-      || EventProcess::Get()->Size() > 0) {
+      || EventProcess::Get()->Size() > 0
+      || EventProcess::Get()->Pushed() != DetectorProcess::Get()->Pushed()) {
     doStatus(infile, true);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
@@ -121,8 +122,6 @@ int main(int argc, char **argv) {
   EventBuilder::Get()->Stop();
   EventProcess::Get()->Stop();
   DetectorProcess::Get()->Stop();
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
   printf(CURSOR_DOWN);
   printf(CURSOR_DOWN);
@@ -379,7 +378,6 @@ void MakeTigressFragments(uint32_t *pdata,int size,
     words+=1;
   }
 }
-
 
 
 

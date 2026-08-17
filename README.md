@@ -1,27 +1,9 @@
 # S2426Sort
 
 S2426Sort is a ROOT/C++ sorter for MIDAS data containing TIGRESS and EMMA
-detector banks. It reads one MIDAS file, decodes detector-specific data into a
-common `Fragment` type, atomically submits all fragments from each MIDAS event
-to a timestamp-ordered queue, builds time-correlated detector events, and writes
-ROOT event trees and histograms.
-
-## Contents
-
-- [Build and run](#build-and-run)
-- [Project layout](#project-layout)
-- [Processing pipeline](#processing-pipeline)
-- [MIDAS event unpacking](#midas-event-unpacking)
-- [Atomic fragment submission](#atomic-fragment-submission)
-- [Event building](#event-building)
-- [Detector event processing](#detector-event-processing)
-- [TIGRESS data](#tigress-data)
-- [EMMA data](#emma-data)
-- [Event tree output](#event-tree-output)
-- [Histogram processing](#histogram-processing)
-- [Ownership and threading](#ownership-and-threading)
-- [End-of-run handling](#end-of-run-handling)
-- [Current implementation notes](#current-implementation-notes)
+detector banks. It decodes raw banks into `Fragment` objects, removes repeated
+GRF4 data, time-orders fragments, builds `DetectorEvent` objects, constructs
+detector-level physics objects, fills histograms, and writes ROOT trees.
 
 ## Build and run
 
@@ -32,125 +14,85 @@ make
 ./bin/s2426Sort path/to/run.mid
 ```
 
-The build creates `build/lib/libCHANNEL.dylib` on macOS or
-`build/lib/libCHANNEL.so` on Linux, together with its ROOT dictionary. Load the
-library in ROOT with:
-
-```cpp
-gSystem->Load("build/lib/libCHANNEL.dylib");
-TClass::GetClass("Channel");
-```
-
-The load call returns `0` when newly loaded and `1` when it was already loaded.
-Keep the generated `libCHANNEL_rdict.pcm` and `libCHANNEL.rootmap` beside the
-shared library.
-
 The calibration file is currently selected in `src/s2426Sort.cxx`:
 
 ```text
 cal/CalibrationFile_May1526_pol1.cal
 ```
 
-The run and subrun numbers are parsed from the input filename. Histograms are
-written to:
+Run and subrun numbers are parsed from the input filename.
+
+## Output files
+
+Histograms remain controlled by `Histogramer` and are written to:
 
 ```text
 histOutput/hist<run>_<subrun>.root
 ```
 
-Prompt and background detector events are written to:
+All TTree files are written under `ttreeOutput`:
 
 ```text
-event<run>_<subrun>.root
+ttreeOutput/fragment<run>_<subrun>.root
+ttreeOutput/event<run>_<subrun>.root
+ttreeOutput/physics<run>_<subrun>.root
 ```
 
-Deduplicated, time-ordered fragments are written to:
+Their schemas are:
 
 ```text
 fragment<run>_<subrun>.root
+└── FragmentTree
+    └── Fragment       (Fragment)
+
+event<run>_<subrun>.root
+└── EventTree
+    └── DetectorEvent  (DetectorEvent)
+
+physics<run>_<subrun>.root
+├── BgTree
+│   ├── Emma           (Emma)
+│   └── Tigress        (Tigress)
+├── PromptGoodTree
+│   ├── Emma           (Emma)
+│   └── Tigress        (Tigress)
+└── PromptBadTree
+    ├── Emma           (Emma)
+    └── Tigress        (Tigress)
 ```
-
-## Project layout
-
-```text
-.
-├── src/
-│   └── s2426Sort.cxx
-├── include/
-│   ├── Channel.h
-│   ├── DetectorProcess.h
-│   ├── Emma.h
-│   ├── EventBuilder.h
-│   ├── EventProcess.h
-│   ├── Fragment.h
-│   ├── Histogramer.h
-│   ├── OutputManager.h
-│   ├── Tigress.h
-│   ├── TMidasEvent.h
-│   └── TMidasFile.h
-├── libraries/
-│   ├── Channel/
-│   ├── EventProcessing/
-│   ├── Histogramer/
-│   ├── OutputManager/
-│   ├── Physics/
-│   ├── TChannel/
-│   └── TMidas/
-├── cal/
-├── histOutput/
-├── CMakeLists.txt
-└── makefile
-```
-
-The main processing components are:
-
-| Component | Responsibility |
-|---|---|
-| `s2426Sort.cxx` | Read MIDAS events and decode GRF4, MADC, and EMMT banks |
-| `Fragment` | Common representation for TIGRESS and EMMA raw hits |
-| `EventBuilder` | Own and time-order fragments; form built fragment groups |
-| `EventProcess` | Route built fragments into `Tigress` and `Emma` objects |
-| `DetectorProcess` | Fill detector and coincidence histograms |
-| `Histogramer` | Create, own, and write ROOT histograms |
-| `OutputManager` | Create, fill, and write event and fragment trees |
 
 ## Processing pipeline
 
 ```mermaid
-flowchart TD
-  A["TMidasFile::Read(TMidasEvent)"] --> B{"Event ID"}
-  B -->|"1: trigger"| C["Locate GRF4, MADC, EMMT banks"]
-  B -->|"BOR / EOR"| D["Print event"]
-  B -->|"scalar / EPICS / message"| E["No detector unpacking"]
-
-  C --> F["Create local vector<unique_ptr<Fragment>>"]
-  F --> G["MakeTigressFragments()"]
-  F --> H["MakeEmmaADC()"]
-  F --> I["MakeEmmaTDC()"]
-
-  G --> J["Append decoded fragments to local vector"]
-  H --> J
-  I --> J
-
-  J --> K["EventBuilder::pushBatch()"]
-  K --> L["Atomic insertion into timestamp-ordered fQueue"]
-  L --> M["EventBuilder::pop()"]
-  M --> V["OutputManager::FillFragment()"]
-  V --> W["fragment<run>_<subrun>.root"]
-  M --> N["EventProcess::loop()"]
-  N --> O["Tigress::BuildHits() and Emma::BuildHits()"]
-  O --> T["OutputManager::FillEvent()"]
-  T --> U["event<run>_<subrun>.root"]
-  O --> P["EventProcess detector-event queue"]
-  P --> Q["DetectorProcess::loop()"]
-  Q --> R["Histogramer::Fill()"]
-  R --> S["histOutput/hist<run>_<subrun>.root"]
+flowchart LR
+  A["MIDAS input"] --> B["Decode GRF4, MADC, and EMMT"]
+  B --> C["EventBuilder::pushBatch()"]
+  C --> D["Timestamp-ordered fQueue"]
+  D --> E["Fill FragmentTree before move"]
+  E --> F["Move fragments into builtfrags"]
+  F --> G["EventProcess builds DetectorEvent"]
+  G --> H["Fill EventTree"]
+  G --> I["DetectorProcess queue"]
+  I --> J["Build Tigress and Emma"]
+  J --> K["Fill histograms"]
+  J --> L["Fill one Physics tree"]
 ```
 
-## MIDAS event unpacking
+The selected two-stage event design is:
 
-Only trigger events with MIDAS event ID `1` are unpacked into detector
-fragments. For each trigger event, `main()` creates:
+| Thread | Responsibility |
+|---|---|
+| Main | Read MIDAS data and decode detector banks |
+| EventProcess | Pop built fragment groups, create `DetectorEvent`, and fill EventTree |
+| DetectorProcess | Build `Tigress` and `Emma`, fill histograms, and fill Physics trees |
+
+`OutputManager` protects all `TTree::Fill()` calls with one mutex. ROOT writes
+are serialized while event construction and detector processing remain in
+separate worker threads.
+
+## Fragment decoding and cleanup
+
+The main input loop decodes available banks into one local vector:
 
 ```cpp
 std::vector<std::unique_ptr<Fragment>> fragments;
@@ -158,427 +100,321 @@ std::vector<std::unique_ptr<Fragment>> fragments;
 
 The banks are processed in this order:
 
-1. `GRF4` through `MakeTigressFragments()`
-2. `MADC` through `MakeEmmaADC()`
-3. `EMMT` through `MakeEmmaTDC()`
+1. GRF4 through `MakeTigressFragments()`.
+2. MADC through `MakeEmmaADC()`.
+3. EMMT through `MakeEmmaTDC()`.
 
-Each unpacker appends decoded fragments to the same local vector. The unpackers
-do not directly insert fragments into the global EventBuilder queue.
+`EventBuilder::pushBatch()` removes exact GRF4 duplicates within the current
+MIDAS batch and across adjacent batches. `Fragment` itself is not modified by
+the event and physics data-model changes.
 
-The current function interfaces are:
-
-```cpp
-void MakeTigressFragments(
-  uint32_t*,
-  int,
-  std::vector<std::unique_ptr<Fragment>>&);
-
-long MakeEmmaADC(
-  uint32_t*,
-  int,
-  std::vector<std::unique_ptr<Fragment>>&);
-
-void MakeEmmaTDC(
-  uint32_t*,
-  int,
-  long,
-  std::vector<std::unique_ptr<Fragment>>&);
-```
-
-After all available banks from the MIDAS event have been decoded, `main()`
-submits the vector:
-
-```cpp
-EventBuilder::Get()->pushBatch(std::move(fragments));
-```
-
-## Atomic fragment submission
-
-`EventBuilder::pushBatch()` holds `fMutex` while inserting the complete
-MIDAS-event batch:
-
-```cpp
-void EventBuilder::pushBatch(
-  std::vector<std::unique_ptr<Fragment>> fragments);
-```
-
-For each non-null fragment, it:
-
-1. Calculates `ts = frag->TimestampNs()` and updates the latest timestamp.
-2. For GRF4 fragments, records `(Address, TimestampNs)`.
-3. Removes repeated GRF4 keys within the current MIDAS-event batch.
-4. Removes GRF4 keys observed in the preceding MIDAS-event batch, keeping the
-   earlier hit.
-5. Moves the retained fragments into `fQueue` and increments `fPushed`.
-
-Before insertion into `fQueue`, EMMT decoding keeps only leading measurements;
-trailing measurements are discarded. An EMMA TDC anode (TDC channel 0--2) is
-registered in `fRefMap` as the event-building reference. Multiple correlated
-EMMA fragments share the paired MADC timestamp, so their time difference from
-the anode reference is 0 ns.
-
-Only the preceding batch's observed key set is retained, so duplicate tracking
-has bounded memory use. Keys remain recorded even when their current fragments
-are removed by the cross-batch check; this also suppresses the same hit when it
-is repeated in three consecutive batches. Other EMMA ADC and TDC channels do
-not participate in duplicate cleaning.
-
-The complete batch is inserted under one lock. `EventBuilder::pop()` therefore
-cannot run between MADC and EMMT insertion for the same MIDAS event.
-
-`EventBuilder::push()` remains available for single-fragment insertion, but
-the main MIDAS unpacking path uses `pushBatch()`.
-
-`fPushed` is a diagnostic counter for the total number of fragments accepted
-by EventBuilder. It does not control queue capacity or event grouping.
+EMMT decoding retains leading measurements and discards trailing measurements.
+Same-address EMMT cleanup is not performed during decoding, in EventBuilder,
+in FragmentTree, or in EventTree. It is performed only while building `Emma`
+for the Physics output.
 
 ## Event building
 
-### Queue structure
-
-EventBuilder stores fragments in:
+EventBuilder stores accepted fragments in:
 
 ```cpp
 std::multimap<long, std::unique_ptr<Fragment>> fQueue;
 ```
 
-The multimap key is `Fragment::TimestampNs()`. The queue has no configured
-fixed fragment capacity; it grows dynamically as required.
-
-### Timestamp units
-
-| Fragment source | Raw timestamp unit |
-|---|---:|
-| TIGRESS GRF4 | 10 ns |
-| EMMA MADC | 50 ns |
-| EMMA EMMT | 50 ns |
-
-Event building always compares nanosecond timestamps returned by
-`TimestampNs()`.
-
-### Reference time and build window
-
-The event-building reference is the EMMA TDC anode timestamp. The asymmetric
-window is represented in `EventBuilder.h` by its lower and upper bounds:
+The key is `Fragment::TimestampNs()`. An EMMA anode fragment (DetType 14,
+channel 0--2) supplies the event-building reference. The prompt build window is:
 
 ```cpp
 static constexpr std::pair<long, long> BUILD_WINDOW_NS = {-400, 2600};
 ```
 
-For each queued fragment, `EventBuilder::pop()` calculates:
+Before a fragment is moved out of `fQueue`, `EventBuilder::pop()` calls:
 
 ```cpp
-dt = thisTime - refTime;
+OutputManager::Get()->FillFragment(*current->second);
 ```
 
-The fragment belongs to the prompt event when:
+It then moves the same fragment into `builtfrags`. This preserves the final
+global time order in FragmentTree and allows FragmentTree content to be checked
+against the fragments stored in EventTree.
 
-```cpp
-BUILD_WINDOW_NS.first <= dt && dt <= BUILD_WINDOW_NS.second
-```
-
-Thus correlated EMMA fragments have `dt == 0`, while GRF4 fragments are
-accepted in `[-400, 2600] ns`. Fragments outside this time window are emitted
-as background groups and subsequently written to `BgTree`.
-
-### Reorder depth
-
-During normal reading, EventBuilder calculates:
+During normal reading, the reorder threshold is:
 
 ```cpp
 safeTime = fLatestTimestampNsSeen - REORDER_SLACK_NS;
 ```
 
-If the earliest queued fragment is newer than `safeTime`, `pop()` waits for
-more input. The current 1 s value is a timestamp reorder depth, not a fixed
-memory buffer size.
+The current reorder slack is 1 second in nanosecond timestamp units.
 
-## Detector event processing
+## DetectorEvent
 
-`EventProcess::loop()` calls `EventBuilder::pop()` and receives:
-
-```cpp
-std::vector<std::unique_ptr<Fragment>> builtfrags;
-```
-
-For each non-empty built group, it creates:
+`DetectorEvent` is a Physics data-model class stored in its own header and
+source files. Its persistent state is:
 
 ```cpp
-struct DetectorEvent {
-  long timestampNs{0};
-  Tigress tigress;
-  Emma emma;
-};
+std::vector<Fragment> fFragments;
+long fTimestampNs{-1};
 ```
 
-Both detector objects are stored by value in every built group. An EMMA TDC
-anode (TDC channel 0--2) supplies the reference timestamp stored in
-`DetectorEvent::timestampNs`. The same anode fragment is also retained and
-routed to `Emma::AddTDC()`; the reference-time assignment must not skip normal
-TDC processing. Fragments are routed by `DetType()`:
+`EventProcess::loop()` copies every non-null fragment in `builtfrags` into
+`fFragments`. No EMMT cleanup occurs here, so the total number of fragments
+represented by EventTree is unchanged from FragmentTree.
 
-| DetType | Destination |
-|---:|---|
-| 0 | `Tigress::fCoreHits` |
-| 2 | `Tigress::fSegmentHits` |
-| 3 | `Tigress::fBGOHits` |
-| 13 | `Emma::AddADC()` |
-| 14 | `Emma::AddTDC()` |
-| other | Not stored in a detector object |
+If the built event contains an anode, `fTimestampNs` is set from the first
+anode in time order. In a valid EMMA event, all DetType 13 and DetType 14
+fragments in that DetectorEvent share the same `Timestamp()` and
+`TimestampNs()`. Additional anode fragments therefore have the same reference
+time. Events without an anode retain the default value `-1`.
 
-After routing:
+`DetectorEvent::Print()` reports the reference timestamp and fragment count.
+
+## TIGRESS physics
+
+`DetectorProcess::loop()` builds `Tigress` and `Emma` from the same
+`DetectorEvent`. TIGRESS fragment routing and correlation are encapsulated in:
 
 ```cpp
-event.tigress.BuildHits();
-event.emma.BuildHits();
+tigress.BuildHits(event);
+tigress.UpdateBGOFire(Tigress::SUPPRESSION_WINDOW_NS);
 ```
 
-`OutputManager::FillEvent()` then copies the complete `DetectorEvent` into its
-`event` branch buffer. A nonzero anode reference timestamp selects
-`PromptTree`; a zero reference timestamp selects `BgTree`. The completed event
-is subsequently moved into the EventProcess queue for DetectorProcess.
+### TIGRESS hit classes
 
-## TIGRESS data
+`TigressChannelHit` stores the quantities shared by core, segment, and BGO
+channels:
 
-`MakeTigressFragments()` searches a GRF4 bank for fragment boundaries:
+- Energy and Charge
+- Address, Number, and Name
+- Timestamp and TimestampNs
+- Time and CFD
 
-- Start word: high nibble `0x8`
-- End word: high nibble `0xe`
+`TigressHit` inherits those core quantities and adds:
 
-For each candidate, it creates a `Fragment` and calls:
+- DetectorNumber
+- ArrayNumber
+- BGOFire
+- Position
+- `vector<TigressChannelHit>` segments
+
+`Tigress` stores the event-level collections:
 
 ```cpp
-frag->Unpack(pStart,nwords);
+std::vector<TigressHit> fHits;
+std::vector<TigressChannelHit> fBGOHits;
 ```
 
-A successfully unpacked TIGRESS fragment contains the decoded address, detector
-type, timestamp, CFD, charge, integration, filter pattern, and pileup state. Its
-timestamp unit is 10 ns.
+All persistent state is private and exposed through const getters. The raw
+`Fragment` vectors previously stored in `Tigress` are removed.
 
-EventProcess routes core, segment, and BGO fragments into `fCoreHits`,
-`fSegmentHits`, and `fBGOHits`. These three `vector<Fragment>` members are the
-temporary persisted TIGRESS representation. `fHits` is currently transient,
-while DetectorProcess fills current histograms directly from `fCoreHits`.
+### Detector and array numbering
 
-## EMMA data
-
-EMMA fragments are created manually rather than through `Fragment::Unpack()`.
-
-### MADC fragments
-
-`MakeEmmaADC()` creates:
+DetectorNumber is parsed from positions 3--4 of the TIGRESS channel name and
+is valid for detector 5--16. Crystal colors are zero-based:
 
 ```text
-Address        0x800000 + ADC channel
-DetType        13
-Timestamp      decoded MADC timestamp
-TimestampUnit  50 ns
-Charge         decoded ADC charge
+B = 0, G = 1, R = 2, W = 3
 ```
 
-The last valid MADC timestamp is returned to `main()` and passed to
-`MakeEmmaTDC()`.
-
-### EMMT fragments
-
-`MakeEmmaTDC()` decodes TDC channel and measurement words. It also decodes the
-hardware TDC timestamp for monitoring, but each created fragment currently uses
-the paired ADC timestamp:
-
-```text
-Address        decoded TDC channel
-DetType        14
-Timestamp      paired MADC timestamp
-TimestampUnit  50 ns
-Charge         decoded TDC measurement
-```
-
-Only leading TDC measurements are stored. A measurement word with the trailing
-edge flag set is discarded before a `Fragment` is created or submitted to
-EventBuilder.
-
-### Emma hit grouping
-
-`Emma::AddADC()` and `Emma::AddTDC()` copy reduced fragment quantities into
-`EmmaHit` objects. `Emma::BuildHits()` groups hits by the low address byte.
-
-ADC grouping:
-
-| Channel | Collection |
-|---:|---|
-| 3 | `fSi` |
-| 16 | `fIC1` |
-| 17 | `fIC2` |
-| 18 | `fIC3` |
-| 19 | `fIC4` |
-
-TDC grouping:
-
-| Channel | Collection |
-|---:|---|
-| 0–2 | `fAnodes` |
-| 3 | `fLeft` |
-| 4 | `fRight` |
-| 5 | `fTop` |
-| 6 | `fBot` |
-
-`fADCTime` and `fTDCTime` are taken from the first stored ADC and TDC hit.
-`CalculatePGACX()` uses anode, left, and right measurements and returns NaN
-when its inputs are incomplete or the left/right sum is zero.
-
-## Event tree output
-
-`OutputManager` writes the detector events to one ROOT file with two trees:
-
-| Tree | Selection | Branches |
-|---|---|---|
-| `PromptTree` | EMMA anode reference present (`DetectorEvent::timestampNs != 0`) | `event` (`DetectorEvent`) |
-| `BgTree` | Outside the anode-reference window (`DetectorEvent::timestampNs == 0`) | `event` (`DetectorEvent`) |
-
-Both trees are written even when one of them has zero entries. The temporary
-TIGRESS schema stores individual core, segment, and BGO `Fragment` objects.
-EMMA stores reduced `EmmaHit` objects and its detector-group collections.
-
-The same manager writes a separate fragment ROOT file:
-
-| File | Tree | Selection | Branch |
-|---|---|---|---|
-| `fragment<run>_<subrun>.root` | `FragmentTree` | Deduplicated fragments in timestamp order | `Fragment` |
-
-FragmentTree is filled in `EventBuilder::pop()` immediately before each
-fragment is moved from the timestamp-sorted queue into `builtfrags`. Filling at
-this point preserves global queue order rather than only the order within one
-MIDAS input batch.
-
-The ROOT dictionaries and shared libraries are generated under `build/lib`.
-An interactive ROOT session can load the data model with:
+ArrayNumber is:
 
 ```cpp
-gSystem->AddDynamicPath("build/lib");
-gSystem->Load("libOUTPUTMANAGER");
+(DetectorNumber - 1) * 4 + CrystalNumber
 ```
 
-Load the calibration file before using `Fragment::Name()`, `Number()`, or other
-methods that resolve an address through `Channel`.
+and therefore ranges from 16 through 63 for the configured detectors.
 
-## Histogram processing
+### Core selection and segment correlation
 
-`DetectorProcess::loop()` consumes completed DetectorEvent objects.
+Core and segment building is performed independently for each ArrayNumber.
+When at least one CoreA (`DetType == 0`) exists, every CoreA becomes a
+`TigressHit` and CoreB fragments for that array are ignored. When no CoreA
+exists, each CoreB (`DetType == 1`) becomes a `TigressHit`. Segments without a
+CoreA or CoreB are not stored in the Physics object; they remain available in
+EventTree.
 
-### TIGRESS singles
-
-`summary` is filled from each TIGRESS core fragment using detector number,
-crystal color, and calibrated energy.
-
-### EMMA timing
-
-When the Emma object has both an ADC time and a TDC time:
-
-```text
-emma_adc_tdc_time = ADCTime - TDCTime
-```
-
-### TIGRESS-EMMA histograms
-
-Current histograms include:
-
-| Directory | Histogram |
-|---|---|
-| `Emma_Tig` | `summary` |
-| `Emma_Tig` | `summary_good` |
-| `Emma_Tig` | `emma_tig_dt` |
-| `Emma_Tig` | `Si Size` |
-| `Emma_Tig` | `Anode Size` |
-| `Emma_Tig` | `IC1 Size` through `IC4 Size` |
-| `Emma_Tig/Si_triggered` | `Anode Size` |
-
-The current `summary_good` condition is:
+Each segment (`DetType == 2`) is assigned to exactly one selected core using:
 
 ```cpp
-event.emma.Si().size() > 0
-&& event.emma.Anodes().size() > 0
-&& (event.emma.Left().size() > 0
-    || event.emma.Right().size() > 0)
+dt = segment.TimestampNs() - core.TimestampNs();
 ```
 
-Earlier pipeline stages also fill:
+An exact `dt == 0` match is selected immediately. Otherwise, the nearest core
+after the segment (`dt < 0`) is preferred. If no later core exists, the nearest
+earlier core is used. Ties retain the original fragment order.
 
-- `eTDC`
-- `GRF4/DetType`
-- `DetectorType`
+### Position and Doppler correction
 
-`Histogramer` protects histogram lookup and filling with a mutex. At shutdown,
-`Histogramer::Close()` writes all histogram lists to the ROOT output file.
+`TigressGeometry.h` contains the TIGRESS position tables used by GRSISort.
+S2426 follows the reference `Fragment::SetTheta()` behavior and uses the
+forward tables. After segment correlation, Position is calculated once:
 
-## Ownership and threading
+- If segments are present, use the position of the maximum-Energy segment.
+- Otherwise, use the core position at segment 0.
 
-```mermaid
-flowchart LR
-  A["Main thread<br/>local MIDAS-event vector"] -->|"move batch"| B["EventBuilder<br/>multimap owns unique_ptr fragments"]
-  B -->|"move built group"| C["EventProcess worker<br/>creates DetectorEvent"]
-  B -->|"copy each ordered Fragment"| G["OutputManager<br/>FragmentTree"]
-  C -->|"copy DetectorEvent"| F["OutputManager<br/>PromptTree or BgTree"]
-  C -->|"copy TIGRESS Fragment<br/>copy EMMA data into EmmaHit"| D["EventProcess queue"]
-  D -->|"move DetectorEvent"| E["DetectorProcess worker<br/>fills histograms"]
+`TigressHit::Doppler(beta)` assumes beam direction `(0,0,1)` and calculates:
+
+```cpp
+gamma = 1 / sqrt(1 - beta * beta);
+correctedEnergy = Energy * gamma *
+                  (1 - beta * cos(Position.Theta()));
 ```
 
-Ownership changes are:
+An invalid zero position returns the uncorrected Energy.
 
-1. The main thread owns newly decoded fragments in a local
-   `vector<unique_ptr<Fragment>>`.
-2. `pushBatch()` removes within-MIDAS-event and adjacent-MIDAS-event GRF4
-   duplicates, registers EMMA anode reference timestamps, then moves the
-   retained fragments into EventBuilder's multimap under one mutex.
-3. `pop()` copies each ordered Fragment into FragmentTree, then moves the built
-   group into EventProcess.
-4. TIGRESS fragments are copied into `fCoreHits`.
-5. EMMA fragments are reduced and copied into `EmmaHit`.
-6. OutputManager copies the complete DetectorEvent into the selected tree's
-   `event` branch buffer and fills one entry.
-7. The completed DetectorEvent is moved through the EventProcess queue.
+### BGO suppression
 
-EventBuilder has a worker thread, but its `loop()` currently only monitors stop
-state and queue emptiness. Event building is performed by the EventProcess
-worker when it calls `EventBuilder::pop()`. DetectorProcess runs in a separate
-worker thread.
+All BGO fragments (`DetType == 3`) are retained in `Tigress::BGOHits()`.
+Ge channel names use the `TIG` prefix while shield channels use `TIS`; detector
+number parsing supports both calibration forms.
+`UpdateBGOFire()` resets and recalculates every core flag using the current
+local GRSISort condition:
+
+```cpp
+core.DetectorNumber() == bgo.DetectorNumber()
+&& dt > timeWindow[0]
+&& dt < timeWindow[1]
+&& bgo.Energy() > SUPPRESSION_ENERGY
+```
+
+where `dt = core.Time() - bgo.Time()`. The exclusive default limits are:
+
+```cpp
+SUPPRESSION_WINDOW_NS = {-300.0, 300.0};
+SUPPRESSION_ENERGY = 0.0;
+```
+
+The legacy charge threshold and crystal/segment suppression matrix are not
+used.
+
+## EMMA physics
+
+### EmmaHit
+
+`EmmaHit` stores:
+
+- Address
+- Timestamp
+- TimestampNs
+- Time
+- Charge
+- Energy
+- Name
+- Number
+
+Its getters expose these values without requiring the original Fragment.
+`EmmaHit::Print()` prints all stored quantities using a format based on
+`Fragment::Print()`.
+
+### Emma groups
+
+`Emma` stores the following `vector<EmmaHit>` groups:
+
+- `Si`
+- `IC0`, `IC1`, `IC2`, `IC3`
+- `Anode`
+- `Left`, `Right`, `Top`, `Bot`
+
+MADC mapping is:
+
+| Address | Channel name | Number | Destination |
+|---:|---|---:|---|
+| `0x00800003` | `EMS00XN00X` | 861 | Si |
+| `0x00800010` | `EMI00XN01X` | 862 | IC0 |
+| `0x00800011` | `EMI00XN02X` | 863 | IC1 |
+| `0x00800012` | `EMI00XN03X` | 864 | IC2 |
+| `0x00800013` | `EMI00XN04X` | 865 | IC3 |
+
+EMMT mapping is:
+
+| Channel | Destination |
+|---:|---|
+| 0--2 | Anode |
+| 3 | Left |
+| 4 | Right |
+| 5 | Top |
+| 6 | Bot |
+
+`Emma::BuildHits()` scans `DetectorEvent::Fragments()` in time order. For
+DetType 14 only, it retains the first hit from each complete address and skips
+later hits with the same address. DetType 13 fragments are not cleaned.
+
+### PGAC X
+
+PGAC X is calculated once at the end of `Emma::BuildHits()` and stored in
+`fPGACX`. The calculation uses the reference implementation parameters:
+
+```text
+Ldelay  = 40
+Rdelay  = 20
+Xlength = 80
+anode   = minimum stored anode charge
+```
+
+The result is NaN when anode data are absent, both Left and Right are absent,
+or the corrected left/right sum is zero. Code that needs to test validity uses:
+
+```cpp
+std::isfinite(emma.PGACX())
+```
+
+`Emma::Print()` reports PGAC X and the size of every private hit vector.
+
+## Physics tree selection
+
+Every DetectorEvent is converted into one Emma/Tigress pair and sent to
+exactly one Physics tree:
+
+```cpp
+if(emma.Anode().empty()) {
+  // BgTree
+} else if(std::isfinite(emma.PGACX())) {
+  // PromptGoodTree
+} else {
+  // PromptBadTree
+}
+```
+
+Consequently, with normal processing, the sum of entries in `BgTree`,
+`PromptGoodTree`, and `PromptBadTree` follows the number of EventTree entries
+without padding, dropping, or corrective entry-count logic.
+
+## Histograms
+
+All histograms remain controlled by `Histogramer`. DetectorProcess fills
+TIGRESS singles, Emma/Tigress summaries, detector group sizes, and prompt or
+background group-size histograms.
+
+The previous `fADCTime` and `fTDCTime` state has been removed from Emma. The
+`emma_adc_tdc_time` and `emma_tig_dt` histogram fills that depended on those
+values are also removed.
+
+The `summary_good` histogram uses the same condition as `PromptGoodTree`:
+
+```cpp
+!emma.Anode().empty() && std::isfinite(emma.PGACX())
+```
 
 ## End-of-run handling
 
-After the MIDAS input loop finishes:
+After the MIDAS input ends:
 
-1. `EventBuilder::Flush()` sets the flushing flag.
-2. While flushing, the normal reorder-depth hold is disabled.
-3. The main thread waits for both queues to drain and for EventProcess to
-   publish every built event.
-4. EventBuilder, EventProcess, and DetectorProcess receive `Stop()`.
-5. `OutputManager::Close()` writes `PromptTree`, `BgTree`, and the separately
-   stored `FragmentTree`.
-6. `Histogramer::Close()` writes the histogram ROOT file.
+1. EventBuilder enters flush mode.
+2. The main thread waits for EventBuilder to emit all built groups.
+3. It waits for EventProcess to publish every DetectorEvent.
+4. It waits for DetectorProcess to complete the corresponding Physics entry.
+5. The processing stages receive `Stop()`.
+6. OutputManager writes and closes all TTree files.
+7. Histogramer writes the histogram ROOT file.
 
-Status output reports:
+The DetectorProcess completion counter is incremented only after histogram and
+Physics-tree filling for that event have finished.
 
-- Input megabytes read and total size
-- EventBuilder queue size
-- Total fragments accepted by EventBuilder
-- Total built groups produced
-- EventProcess queue size
-- Detector events completed
+## Notes
 
-Reading and queue draining share one four-line status display that refreshes in
-place. After processing finishes, a final four-line status is printed normally.
-
-## Current implementation notes
-
-- `main()` expects an input path in `argv[1]`; it does not currently validate
-  a missing argument.
+- `main()` currently expects an input path in `argv[1]`.
 - The calibration path is hard-coded.
-- The main unpacking path atomically submits one complete MIDAS-event batch, but
-  EventBuilder grouping remains timestamp-based and may combine fragments from
-  different MIDAS events when they fall inside the 5 μs build window.
-- `fQueue` is dynamically sized; `REORDER_SLACK_NS` controls timestamp
-  reorder depth rather than memory capacity.
-- EMMA TDC fragments use the paired MADC timestamp for event building.
-- TIGRESS currently persists raw `Fragment` vectors as a temporary analysis
-  schema; `TigressHit::fHits` is not written.
-- Worker threads are detached in their constructors. Shutdown behavior is
-  controlled through atomic stop flags and queue-drain checks.
+- EventBuilder has no fixed fragment capacity; `REORDER_SLACK_NS` controls
+  timestamp reorder depth rather than queue size.
+- EMMT fragments use the paired MADC timestamp for event building.
+- Existing files under `macros/` are intentionally unchanged by this data-model
+  update.

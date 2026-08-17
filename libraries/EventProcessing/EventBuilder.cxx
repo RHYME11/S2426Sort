@@ -129,11 +129,6 @@ bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
   while(it!=fQueue.end()){
     const long thisTime = it->first;
     const long dt = thisTime - refTime;
-    // ==== BEGIN ==== //
-    if(it->second.get()->Number()>849 && it->second.get()->Number()<874) {
-      Histogramer::Fill("EventBuilder","dt = EMMA - refTime", 300,-400,2600,dt);
-    }
-    // ===== END ===== //
     if(refTime<0){ // fFlushing must be true
       it = moveToBuilt(it);
       continue;
