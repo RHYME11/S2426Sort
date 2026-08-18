@@ -13,8 +13,10 @@
   TH2D *sum0 = new TH2D("sum0","Summary",64,0,64,1e4,0,1e4);
   TH2D *sum1 = new TH2D("sum1",Form("Summary: Doppler cor (b=%.3f)",beta),64,0,64,1e4,0,1e4);
   TH2D *sum2 = new TH2D("sum2",Form("Summary: Doppler cor (b=%.3f) + BGO veto",beta),64,0,64,1e4,0,1e4);
-  TH1D *dt0 = new TH1D("dt0","dt between two gam",6e3,-3e3,3e3);
-  TH1D *dt1 = new TH1D("dt1","dt between two gam: BGO veto",6e3,-3e3,3e3);
+  TH2D *dt0 = new TH2D("dt0","dt(Time) between two gam vs Doppler(b=0.056)",6e2,-3e3,3e3,2e3,0,8e3);
+  TH2D *dt1 = new TH2D("dt1","dt(TimestampNs) between two gam vs Doppler(b=0.056)",6e2,-3e3,3e3, 2e3,0,8e3);
+  TH1D *dt2 = new TH1D("dt2","dt(TimestampNs) between two gam if fabs(dTime)>3us",6e2,-3e3,3e3);
+  TH1D *dt3 = new TH1D("dt3","dt = fabs(Time() - TimestampNs())",4e6,0,4e6);
   int count0, count1, count2, count3,count4, count5,count6, count7,count8, count9,count10;
   for(x=0;x<nentries;x++){
     tree->GetEntry(x);
@@ -28,26 +30,33 @@
         sum0->Fill(arryi,tig->Hits()[i].Energy());
         sum1->Fill(arryi,ei);
         if(!bgoi) sum2->Fill(arryi,ei);
-        for(int j=i+1;j<tig->Hits().size();j++){
+        dt3->Fill(fabs(ti - tig->Hits()[i].TimestampNs()));
+        /*for(int j=i+1;j<tig->Hits().size();j++){
           double ej = tig->Hits()[j].Doppler(beta);
           if(ej<15) continue;
           double tj = tig->Hits()[j].Time();
           bool bgoj = tig->Hits()[j].BGOFire();
           double dt = 0;
-          if(ei<ej) dt = ti - tj;
-          else      dt = tj - ti;
-          dt0->Fill(dt);
-          if((!bgoi) && (!bgoj)) dt1->Fill(dt);
+          double dtns = 0;
+          double e = -1;
+          if(ei<ej) {dt = ti - tj; e = ej; dtns = tig->Hits()[i].TimestampNs() - tig->Hits()[j].TimestampNs();}
+          else      {dt = tj - ti; e = ei; dtns = tig->Hits()[j].TimestampNs() - tig->Hits()[i].TimestampNs();}
+          dt0->Fill(dt,e);
+          dt1->Fill(dtns,e);
+          if(fabs(dt)>=3000) dt2->Fill(dtns);
+          //if((!bgoi) && (!bgoj)) dt1->Fill(dt);
         } // j loop over 
+        */ 
       } // i loop over
     } // if left && right over
   } // tree loop over
 
-  new TCanvas; sum0->Draw();
-  new TCanvas; sum1->Draw();
-  new TCanvas; sum2->Draw();
+  //new TCanvas; sum0->Draw();
+  //new TCanvas; sum1->Draw();
+  //new TCanvas; sum2->Draw();
   new TCanvas; dt0 ->Draw();
   new TCanvas; dt1 ->Draw();
-
+  //new TCanvas; dt2 ->Draw();
+  //new TCanvas; dt3 ->Draw();
 
 }
