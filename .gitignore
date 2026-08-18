@@ -16,6 +16,6 @@ a.out
 *.dat
 *.c
 *.mid
-
+*.sh
 .DS_Store
 
