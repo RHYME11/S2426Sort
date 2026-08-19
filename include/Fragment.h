@@ -50,7 +50,7 @@ class Fragment {
     int  DetNumber()    const { std::string name = Channel::Get(fAddress)->Name(); if(name.length()>4) return atoi(name.substr(3,2).c_str()); return 99; }
 
     std::string Name() const { return   Channel::Get(fAddress)->Name(); }  
-
+    int KValue() const {if(fInt.size()>0) return fInt.at(0); else return -1;}
     bool operator<(const Fragment& other) const { 
       return TimestampNs() > other.TimestampNs();
     }
