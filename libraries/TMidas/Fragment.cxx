@@ -80,6 +80,7 @@ bool Fragment::Unpack(uint32_t *data,int &nwords) {
 
   SetCfd(datum & 0x003fffff);
   tempInt += ((datum & 0x7fc00000) >> 22);
+  SetKValue(tempInt);
   AddInt(tempInt);
   AddCharge(tempChg);
   SetTimestampUnit(10);
@@ -133,5 +134,4 @@ void Fragment::AddCharge(int charge) {
   //printf("eng = %.02f \n", eng); 
   fEnergy.push_back(eng);
 }
-
 

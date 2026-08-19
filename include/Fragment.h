@@ -28,6 +28,7 @@ class Fragment {
     void SetCfd(int cfd)              { fCfd = cfd; }
     void SetFilterPattern(int fp)     { fFilterPattern = fp; }    
     void SetPileup(int pileup)        { fPileup = pileup; }  
+    void SetKValue(int kValue)        { fKValue = kValue; }
     void SetTimestampUnit(int timestampunit) { fTimestampUnit = timestampunit; UpdateTime(); }
     void AddCharge(int chg); //           { fCharge.push_back(chg); }
     void AddInt(int i)                { fInt.push_back(i); }
@@ -42,6 +43,7 @@ class Fragment {
     int  Cfd()       const { return fCfd;       }
     int  Filter()    const { return fFilterPattern; }
     int  Pileup()    const { return fPileup;        }
+    int  KValue()    const { return fKValue;         }
 
     float Charge()   const; // { return float(fCharge.at(0))/float(fInt.at(0)); }
     float Energy()   const; // { return float(fCharge.at(0))/float(fInt.at(0)); }
@@ -64,6 +66,7 @@ class Fragment {
     int  fCfd{-1};
     int fFilterPattern{-1};
     int fPileup{-1};
+    int fKValue{-1};
 
     bool fHasWave{false};
     int  fWaveSamples{-1};
@@ -85,7 +88,7 @@ class Fragment {
       return;
     }
 
-  ClassDef(Fragment,1);
+  ClassDef(Fragment,2);
 };
 
 
