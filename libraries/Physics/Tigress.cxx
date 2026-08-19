@@ -162,7 +162,8 @@ TigressChannelHit::TigressChannelHit(const Fragment& frag)
     fTimestamp(frag.Timestamp()),
     fTimestampNs(frag.TimestampNs()),
     fTime(frag.Time()),
-    fCFD(frag.Cfd()) { }
+    fCFD(frag.Cfd()),
+    fInt(frag.KValue()) { }
 
 // ============== Clear ==============
 // Purpose: Reset all stored channel quantities.
@@ -179,6 +180,7 @@ void TigressChannelHit::Clear(Option_t *opt) {
   fTimestampNs = -1;
   fTime = -1;
   fCFD = -1;
+  fInt = -1;
 }
 
 // ============== Print ==============
@@ -197,6 +199,7 @@ void TigressChannelHit::Print(Option_t *opt) const {
   printf("\ttime:        %.3f\n", fTime);
   printf("\tcharge:      %.3f\n", fCharge);
   printf("\tenergy:      %.3f\n", fEnergy);
+  printf("\tK value:     %i\n", fInt);
 }
 
 // ============== TigressHit ==============
@@ -385,7 +388,7 @@ void Tigress::UpdateBGOFire(const std::array<double, 2>& timeWindow) {
       const double dt = hit.Time() - bgo.Time();
       if(hit.DetectorNumber() == ParseDetectorNumber(bgo.Name()) &&
          dt > timeWindow[0] && dt < timeWindow[1] &&
-         bgo.Energy() > SUPPRESSION_ENERGY) {
+         bgo.Charge() > SUPPRESSION_CHARGE) {
         hit.fBGOFire = true;
         break;
       }

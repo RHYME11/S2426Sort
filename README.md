@@ -164,7 +164,7 @@ During normal reading, the reorder threshold is:
 safeTime = fLatestTimestampNsSeen - REORDER_SLACK_NS;
 ```
 
-The shared reorder slack is 20 seconds in nanosecond timestamp units. Full and
+The shared reorder slack is 1 second in nanosecond timestamp units. Full and
 fragment-only processing use the same value.
 
 ## DetectorEvent
@@ -207,7 +207,7 @@ channels:
 - Energy and Charge
 - Address, Number, and Name
 - Timestamp and TimestampNs
-- Time and CFD
+- Time, CFD, and KValue
 
 `TigressHit` inherits those core quantities and adds:
 
@@ -294,18 +294,17 @@ local GRSISort condition:
 core.DetectorNumber() == bgo.DetectorNumber()
 && dt > timeWindow[0]
 && dt < timeWindow[1]
-&& bgo.Energy() > SUPPRESSION_ENERGY
+&& bgo.Charge() > SUPPRESSION_CHARGE
 ```
 
 where `dt = core.Time() - bgo.Time()`. The exclusive default limits are:
 
 ```cpp
 SUPPRESSION_WINDOW_NS = {-300.0, 300.0};
-SUPPRESSION_ENERGY = 0.0;
+SUPPRESSION_CHARGE = 20.0;
 ```
 
-The legacy charge threshold and crystal/segment suppression matrix are not
-used.
+The legacy crystal/segment suppression matrix is not used.
 
 ## EMMA physics
 

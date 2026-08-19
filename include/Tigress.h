@@ -29,6 +29,7 @@ class TigressChannelHit {
     long TimestampNs() const { return fTimestampNs; }
     double Time() const { return fTime; }
     int CFD() const { return fCFD; }
+    int KValue() const { return fInt; }
 
   private:
     double fEnergy{-1};
@@ -40,8 +41,9 @@ class TigressChannelHit {
     long fTimestampNs{-1};
     double fTime{-1};
     int fCFD{-1};
+    int fInt{-1};
 
-  ClassDef(TigressChannelHit,1)
+  ClassDef(TigressChannelHit,2)
 };
 
 class TigressHit : public TigressChannelHit {
@@ -77,7 +79,7 @@ class TigressHit : public TigressChannelHit {
 
 class Tigress {
   public:
-    static constexpr double SUPPRESSION_ENERGY = 0.0;
+    static constexpr double SUPPRESSION_CHARGE = 20.0;
     static constexpr std::array<double, 2> SUPPRESSION_WINDOW_NS = {
       -300.0, 300.0
     };
