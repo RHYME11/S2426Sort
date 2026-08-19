@@ -33,6 +33,7 @@ class EventBuilder {
     void push(std::unique_ptr<Fragment> frag);
     void pushBatch(std::vector<std::unique_ptr<Fragment>> fragments);
     bool pop(std::vector<std::unique_ptr<Fragment> > &Builtfrags);  
+    uint32_t WriteReadyFragments(bool flush = false);
     void loop(); // monitor the queue and decide when to do useful things.
 
     
@@ -45,6 +46,7 @@ class EventBuilder {
     uint32_t Size()    const { std::lock_guard lk(fMutex); return fQueue.size(); }
     uint32_t Pushed()  const {  return fPushed.load(); }
     uint32_t Popped()  const {  return fPopped.load(); }
+    uint32_t Written() const { return fWritten.load(); }
 
 
   private:
@@ -58,6 +60,7 @@ class EventBuilder {
 
     static constexpr std::pair<long, long> BUILD_WINDOW_NS = {-400, 2600};
     static constexpr long REORDER_SLACK_NS = 10e8;
+    static constexpr long FRAGMENT_REORDER_SLACK_NS = 20000000000L;
 
     mutable std::mutex fMutex;
     std::multimap<long, std::unique_ptr<Fragment>> fQueue;// for all fragments
@@ -67,6 +70,7 @@ class EventBuilder {
 
     std::atomic<uint32_t> fPushed{0};
     std::atomic<uint32_t> fPopped{0};
+    std::atomic<uint32_t> fWritten{0};
 
     std::atomic_bool fStop{false};
     std::thread fWorker;

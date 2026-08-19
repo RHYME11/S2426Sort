@@ -22,10 +22,10 @@ class OutputManager {
     static OutputManager *Get();
 
     // ============== Open ==============
-    // Purpose: Open the three TTree ROOT files and create their trees.
-    // Inputs: Run and subrun numbers.
+    // Purpose: Open requested TTree ROOT files and create their trees.
+    // Inputs: Run, subrun, and fragment-only selection.
     // Outputs: None.
-    void Open(int run, int subrun);
+    void Open(int run, int subrun, bool fragmentOnly = false);
 
     // ============== FillEvent ==============
     // Purpose: Fill one complete detector event into EventTree.

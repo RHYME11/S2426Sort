@@ -23,40 +23,62 @@
 
 using namespace std;
 
-void MakeTigressFragments(uint32_t*,int,std::vector<std::unique_ptr<Fragment>>&);
+void MakeTigressFragments(uint32_t*,int,std::vector<std::unique_ptr<Fragment>>&,bool);
 long MakeEmmaADC(uint32_t*,int,std::vector<std::unique_ptr<Fragment>>&);
-void MakeEmmaTDC(uint32_t*,int,long,std::vector<std::unique_ptr<Fragment>>&);
+void MakeEmmaTDC(uint32_t*,int,long,std::vector<std::unique_ptr<Fragment>>&,bool);
 
 
-void doStatus(TMidasFile&,bool forcePrint=false,bool finalPrint=false);
+void doStatus(TMidasFile&,bool fragmentOnly,bool forcePrint=false,bool finalPrint=false);
 auto start     = std::chrono::steady_clock::now();
 auto lastPrint = std::chrono::steady_clock::now();
 auto timeEllapsed = std::chrono::duration_cast<std::chrono::seconds>(lastPrint-start);
 const std::chrono::seconds interval(1); // 1 second interval
 
 int main(int argc, char **argv) {
-  TMidasFile infile(argv[1]);
+  bool fragmentOnly = false;
+  const char* inputPath = nullptr;
+  for(int index = 1; index < argc; ++index) {
+    const std::string argument = argv[index];
+    if(argument == "--fragment-only") {
+      fragmentOnly = true;
+    } else if(!inputPath) {
+      inputPath = argv[index];
+    } else {
+      fprintf(stderr, "usage: %s [--fragment-only] input.mid\n", argv[0]);
+      return 2;
+    }
+  }
+  if(!inputPath) {
+    fprintf(stderr, "usage: %s [--fragment-only] input.mid\n", argv[0]);
+    return 2;
+  }
+
+  TMidasFile infile(inputPath);
   TMidasEvent event;
 
-  Histogramer *gHist = Histogramer::Get();
+  Histogramer *gHist = fragmentOnly ? nullptr : Histogramer::Get();
 
   int run,subrun;
-  getRunNumber(argv[1],run,subrun);
-  gHist->SetRun(run,subrun);
-  OutputManager::Get()->Open(run,subrun);
+  getRunNumber(inputPath,run,subrun);
+  if(gHist) {
+    gHist->SetRun(run,subrun);
+  }
+  OutputManager::Get()->Open(run,subrun,fragmentOnly);
 
-  printf(" sorting \t %s\n",argv[1]);
+  printf(" sorting \t %s\n",inputPath);
   printf(" \trun:    %i\n",run);
   printf(" \tsubrun: %i\n",subrun);
+  printf(" \tmode:   %s\n",fragmentOnly ? "fragment-only" : "full");
 
-  Channel::Read("cal/CalibrationFile_May1526_pol1.cal"); 
-
+  Channel::Read("cal/CalibrationFile_May1526_pol1.cal");
   //start event builder;
   EventBuilder::Get();
-  //start event process;
-  EventProcess::Get();
-  //start detector process;
-  DetectorProcess::Get();
+  if(!fragmentOnly) {
+    //start event process;
+    EventProcess::Get();
+    //start detector process;
+    DetectorProcess::Get();
+  }
 
 
   std::map<std::string,int> banksFound;
@@ -77,7 +99,7 @@ int main(int argc, char **argv) {
                 std::vector<std::unique_ptr<Fragment>> fragments;
                 if((banksize = event.LocateBank(nullptr, "GRF4", &ptr)) > 0) {
                   banksFound["GRIF4"]++;
-                  MakeTigressFragments((uint32_t*)ptr,banksize,fragments); 
+                  MakeTigressFragments((uint32_t*)ptr,banksize,fragments,!fragmentOnly);
                 } 
                 if((banksize = event.LocateBank(nullptr, "MADC", &ptr)) > 0) {
                   banksFound["MADC"]++;     // adc
@@ -88,9 +110,12 @@ int main(int argc, char **argv) {
                   banksFound["EMMT"]++;   // tdc
                   if(!haveEmmaAdcTimestamp) 
                     printf(RED "EMMA TDC without ADC" RESET_COLOR "\n");
-                  MakeEmmaTDC((uint32_t*)ptr,banksize,emmaAdcTimestamp,fragments); 
+                  MakeEmmaTDC((uint32_t*)ptr,banksize,emmaAdcTimestamp,fragments,!fragmentOnly);
                 }
                 EventBuilder::Get()->pushBatch(std::move(fragments));
+                if(fragmentOnly) {
+                  EventBuilder::Get()->WriteReadyFragments();
+                }
                 break;
               }
       case 2:  //scalar
@@ -105,9 +130,19 @@ int main(int argc, char **argv) {
     };
     typeFound[event.GetEventId()]++;
     counter++;
-    doStatus(infile);
+    doStatus(infile,fragmentOnly);
   }
-  doStatus(infile,true);
+  doStatus(infile,fragmentOnly,true);
+
+  if(fragmentOnly) {
+    EventBuilder::Get()->WriteReadyFragments(true);
+    EventBuilder::Get()->Stop();
+    printf(CURSOR_DOWN);
+    printf("\rFinal status:\n");
+    doStatus(infile,true,true,true);
+    OutputManager::Close();
+    return 0;
+  }
 
   EventBuilder::Get()->Flush();
 
@@ -115,7 +150,7 @@ int main(int argc, char **argv) {
       || EventBuilder::Get()->Popped() != EventProcess::Get()->Pushed()
       || EventProcess::Get()->Size() > 0
       || EventProcess::Get()->Pushed() != DetectorProcess::Get()->Pushed()) {
-    doStatus(infile, true);
+    doStatus(infile,false,true);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
@@ -128,7 +163,7 @@ int main(int argc, char **argv) {
   printf(CURSOR_DOWN);
   printf(CURSOR_DOWN);
   printf("\rFinal status:\n");
-  doStatus(infile, true, true);
+  doStatus(infile,false,true,true);
 
   OutputManager::Close();
   gHist->Close();
@@ -137,9 +172,9 @@ int main(int argc, char **argv) {
 
 // ============== doStatus ==============
 // Purpose: Refresh active status in place or print the final status with newlines.
-// Inputs: MIDAS file, force flag, and final-output flag.
-// Outputs: Four status lines written to stdout.
-void doStatus(TMidasFile &infile, bool forcePrint, bool finalPrint) {
+// Inputs: MIDAS file, mode, force flag, and final-output flag.
+// Outputs: Mode-specific status lines written to stdout.
+void doStatus(TMidasFile &infile, bool fragmentOnly, bool forcePrint, bool finalPrint) {
 
   if((std::chrono::steady_clock::now()-lastPrint) > interval) forcePrint=true;
   if(!forcePrint) return;
@@ -156,11 +191,21 @@ void doStatus(TMidasFile &infile, bool forcePrint, bool finalPrint) {
     printf(" %lld s  read %.02f / %.02f MB  %.1f%%  %.2f MB/s\n",
         timeEllapsed.count(), readMB, totalMB, 100.0*frac, rate);
 
+    if(fragmentOnly) {
+      printf("\t FragmentWriter[%s] Q[%u] decoded[%u] written[%u]\n",
+          EventBuilder::Get()->Running() ? "on" : "off",
+          EventBuilder::Get()->Size(),
+          EventBuilder::Get()->Pushed(),
+          EventBuilder::Get()->Written());
+      fflush(stdout);
+      return;
+    }
+
     printf("\t EventBuilder[%s] Q[%u] fragments_in[%u] built_events_out[%u]\n",
-        EventBuilder::Get()->Running() ? "on" : "off",
-        EventBuilder::Get()->Size(),
-        EventBuilder::Get()->Pushed(),
-        EventBuilder::Get()->Popped());
+          EventBuilder::Get()->Running() ? "on" : "off",
+          EventBuilder::Get()->Size(),
+          EventBuilder::Get()->Pushed(),
+          EventBuilder::Get()->Popped());
 
     printf("\t EventProcess [%s] Q[%u] built_events_in[%u] detector_events_out[%u]\n",
         EventProcess::Get()->Running() ? "on" : "off",
@@ -182,6 +227,17 @@ void doStatus(TMidasFile &infile, bool forcePrint, bool finalPrint) {
 
   printf(CURSOR_DOWN);
   printf(CLEAR_LINE);
+  if(fragmentOnly) {
+    printf("\t FragmentWriter[%s] Q[%u] decoded[%u] written[%u]\r",
+        EventBuilder::Get()->Running() ? "on" : "off",
+        EventBuilder::Get()->Size(),
+        EventBuilder::Get()->Pushed(),
+        EventBuilder::Get()->Written());
+    printf(CURSOR_UP);
+    fflush(stdout);
+    return;
+  }
+
   printf("\t EventBuilder[%s] Q[%u] fragments_in[%u] built_events_out[%u]\r",
       EventBuilder::Get()->Running() ? "on" : "off",
       EventBuilder::Get()->Size(),
@@ -267,10 +323,10 @@ static uint32_t lasttimestamp = 0;     // "last" time stamp for simple wraparoun
 static uint32_t countsbetweenwraps; // number of counts between wraparounds
 // ============== MakeEmmaTDC ==============
 // Purpose: Decode EMMT fragments into the current MIDAS event batch.
-// Inputs: EMMT words, word count, ADC timestamp, and destination vector.
+// Inputs: EMMT words, size, ADC timestamp, destination, and histogram flag.
 // Outputs: Decoded fragments appended to the vector.
 void MakeEmmaTDC(uint32_t* pdata,int size,long adcTimestamp,
-    std::vector<std::unique_ptr<Fragment>>& fragments) {
+    std::vector<std::unique_ptr<Fragment>>& fragments,bool fillHistograms) {
   uint32_t tmpTimestamp = 0;
   uint32_t tmpAddress   = 0;
   Long64_t ts           = 0;
@@ -328,8 +384,10 @@ void MakeEmmaTDC(uint32_t* pdata,int size,long adcTimestamp,
           
           int c = frag.get()->Address()&0xff;
           float chg = frag.get()->Charge(); 
-          Histogramer::Get()->Fill("eTDC",4000,0,64000,chg,
-              1000,0,1000,c);
+          if(fillHistograms) {
+            Histogramer::Get()->Fill("eTDC",4000,0,64000,chg,
+                1000,0,1000,c);
+          }
           fragments.emplace_back(std::move(frag));
         }
         addresses.clear();
@@ -345,10 +403,10 @@ void MakeEmmaTDC(uint32_t* pdata,int size,long adcTimestamp,
 
 // ============== MakeTigressFragments ==============
 // Purpose: Decode GRF4 fragments into the current MIDAS event batch.
-// Inputs: GRF4 words, word count, and destination fragment vector.
+// Inputs: GRF4 words, size, destination vector, and histogram flag.
 // Outputs: Decoded fragments appended to the vector.
 void MakeTigressFragments(uint32_t *pdata,int size,
-    std::vector<std::unique_ptr<Fragment>>& fragments) { 
+    std::vector<std::unique_ptr<Fragment>>& fragments,bool fillHistograms) {
   int words=0;
   int counter=0;
   int good=0;
@@ -367,7 +425,9 @@ void MakeTigressFragments(uint32_t *pdata,int size,
       int i=0;
       if(frag.get()->Unpack(pStart,nwords)) {
         good++;
-        Histogramer::Fill("GRF4","DetType",20,0,20,frag.get()->DetType());
+        if(fillHistograms) {
+          Histogramer::Fill("GRF4","DetType",20,0,20,frag.get()->DetType());
+        }
         fragments.emplace_back(std::move(frag));
       } else {
         bad++;
@@ -378,13 +438,6 @@ void MakeTigressFragments(uint32_t *pdata,int size,
     words+=1;
   }
 }
-
-
-
-
-
-
-
 
 
 

@@ -99,6 +99,37 @@ void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
   }
 }
 
+// ============== WriteReadyFragments ==============
+// Purpose: Write time-ordered fragments without building detector events.
+// Inputs: Flush flag that disables the timestamp reorder threshold.
+// Outputs: Number of fragments written during this call.
+uint32_t EventBuilder::WriteReadyFragments(bool flush) {
+  std::lock_guard<std::mutex> lock(fMutex);
+  const long safeTime = fLatestTimestampNsSeen - FRAGMENT_REORDER_SLACK_NS;
+  uint32_t written = 0;
+
+  while(!fQueue.empty() && (flush || fQueue.begin()->first <= safeTime)) {
+    auto current = fQueue.begin();
+    OutputManager::Get()->FillFragment(*current->second);
+
+    const long timestampNs = current->first;
+    const Fragment* fragment = current->second.get();
+    const int channel = fragment->Address() & 0xff;
+    if(fragment->DetType() == 14 && channel >= 0 && channel <= 2) {
+      auto reference = fRefMap.find(timestampNs);
+      if(reference != fRefMap.end() && reference->second == fragment) {
+        fRefMap.erase(reference);
+      }
+    }
+
+    fQueue.erase(current);
+    ++written;
+  }
+
+  fWritten += written;
+  return written;
+}
+
 
 bool EventBuilder::pop(std::vector<std::unique_ptr<Fragment>>& Builtfrags) {
   std::lock_guard<std::mutex> lk(fMutex);

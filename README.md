@@ -14,6 +14,19 @@ make
 ./bin/s2426Sort path/to/run.mid
 ```
 
+For source measurements without EMMA reference hits, write only the
+time-ordered FragmentTree:
+
+```bash
+./bin/s2426Sort --fragment-only path/to/run.mid
+```
+
+Fragment-only mode keeps a 20-second timestamp reorder buffer and writes safe
+fragments continuously. The larger source-run buffer covers the delayed GRF4
+blocks observed in source measurements. This mode does not start event or
+detector processing, and it does not create EventTree, Physics-tree, or
+histogram output files.
+
 The calibration file is currently selected in `src/s2426Sort.cxx`:
 
 ```text
@@ -37,6 +50,9 @@ ttreeOutput/fragment<run>_<subrun>.root
 ttreeOutput/event<run>_<subrun>.root
 ttreeOutput/physics<run>_<subrun>.root
 ```
+
+With `--fragment-only`, only `ttreeOutput/fragment<run>_<subrun>.root` is
+created.
 
 Their schemas are:
 
@@ -85,6 +101,10 @@ The selected two-stage event design is:
 | Main | Read MIDAS data and decode detector banks |
 | EventProcess | Pop built fragment groups, create `DetectorEvent`, and fill EventTree |
 | DetectorProcess | Build `Tigress` and `Emma`, fill histograms, and fill Physics trees |
+
+In fragment-only mode, the main thread drains the timestamp-ordered
+EventBuilder queue directly into FragmentTree. EventProcess and DetectorProcess
+are not constructed.
 
 `OutputManager` protects all `TTree::Fill()` calls with one mutex. ROOT writes
 are serialized while event construction and detector processing remain in
@@ -405,6 +425,9 @@ After the MIDAS input ends:
 5. The processing stages receive `Stop()`.
 6. OutputManager writes and closes all TTree files.
 7. Histogramer writes the histogram ROOT file.
+
+In fragment-only mode, the final reorder-buffer contents are written directly,
+then only the FragmentTree file is closed.
 
 The DetectorProcess completion counter is incremented only after histogram and
 Physics-tree filling for that event have finished.

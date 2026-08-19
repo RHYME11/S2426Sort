@@ -58,10 +58,10 @@ OutputManager *OutputManager::Get() {
 }
 
 // ============== Open ==============
-// Purpose: Open the three TTree ROOT files and create their trees.
-// Inputs: Run and subrun numbers.
+// Purpose: Open requested TTree ROOT files and create their trees.
+// Inputs: Run, subrun, and fragment-only selection.
 // Outputs: None.
-void OutputManager::Open(int run, int subrun) {
+void OutputManager::Open(int run, int subrun, bool fragmentOnly) {
   if(fFragmentFile || fEventFile || fPhysicsFile) return;
 
   const std::string outDir = "ttreeOutput";
@@ -79,6 +79,10 @@ void OutputManager::Open(int run, int subrun) {
     fFragmentFile->cd();
     fFragmentTree = new TTree("FragmentTree", "Time-ordered fragments");
     fFragmentTree->Branch("Fragment", "Fragment", &fFragmentBranch, 32000, 0);
+  }
+
+  if(fragmentOnly) {
+    return;
   }
 
   fEventFilename = Form("%s/event%i_%03i.root", outDir.c_str(), run, subrun);
