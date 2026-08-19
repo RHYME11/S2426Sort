@@ -105,7 +105,7 @@ void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
 // Outputs: Number of fragments written during this call.
 uint32_t EventBuilder::WriteReadyFragments(bool flush) {
   std::lock_guard<std::mutex> lock(fMutex);
-  const long safeTime = fLatestTimestampNsSeen - FRAGMENT_REORDER_SLACK_NS;
+  const long safeTime = fLatestTimestampNsSeen - REORDER_SLACK_NS;
   uint32_t written = 0;
 
   while(!fQueue.empty() && (flush || fQueue.begin()->first <= safeTime)) {

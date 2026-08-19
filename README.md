@@ -21,11 +21,11 @@ time-ordered FragmentTree:
 ./bin/s2426Sort --fragment-only path/to/run.mid
 ```
 
-Fragment-only mode keeps a 20-second timestamp reorder buffer and writes safe
-fragments continuously. The larger source-run buffer covers the delayed GRF4
-blocks observed in source measurements. This mode does not start event or
-detector processing, and it does not create EventTree, Physics-tree, or
-histogram output files.
+Fragment-only mode uses the shared 20-second timestamp reorder buffer and
+writes safe fragments continuously. The buffer covers the delayed GRF4 blocks
+observed in source measurements. This mode does not start event or detector
+processing, and it does not create EventTree, Physics-tree, or histogram output
+files.
 
 The calibration file is currently selected in `src/s2426Sort.cxx`:
 
@@ -164,7 +164,8 @@ During normal reading, the reorder threshold is:
 safeTime = fLatestTimestampNsSeen - REORDER_SLACK_NS;
 ```
 
-The current reorder slack is 1 second in nanosecond timestamp units.
+The shared reorder slack is 20 seconds in nanosecond timestamp units. Full and
+fragment-only processing use the same value.
 
 ## DetectorEvent
 
