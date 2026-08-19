@@ -1,7 +1,7 @@
 {
 
-  Channel::Read("cal/CalibrationFile_Nov182025.cal");
-  //Channel::Read("cal/CalibrationFile_May1526_pol1.cal");
+  //Channel::Read("cal/CalibrationFile_Nov182025.cal");
+  Channel::Read("cal/CalibrationFile_May1526_pol1.cal");
   Fragment *ftg = nullptr;
   FragmentTree->SetBranchAddress("Fragment", &ftg);                              
   long nentries = FragmentTree->GetEntries();                                                      
