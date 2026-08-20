@@ -54,6 +54,24 @@ ttreeOutput/physics<run>_<subrun>.root
 With `--fragment-only`, only `ttreeOutput/fragment<run>_<subrun>.root` is
 created.
 
+### PromptGoodTree histogram sorter
+
+Build the standalone PromptGoodTree sorter from the project root using the
+compile command on the first line of
+`macros/cxx/physicstree_promptgood.cxx`. A bare input filename is read from
+`ttreeOutput`:
+
+```bash
+./physicstree_promptgood physics62261_001.root
+```
+
+The sorter fills the EMMA Si and IC0--IC3 multiplicity histograms for entries
+with both Left and Right hits. Its output is:
+
+```text
+histOutput/physicstree_promptgood/hist_physics62261_001.root
+```
+
 Their schemas are:
 
 ```text

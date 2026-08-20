@@ -10,6 +10,7 @@ EMMA_DAQ/
 *.so
 *.pcm
 a.out
+/physicstree_promptgood
 *.root
 *.swp
 *.log
@@ -18,4 +19,3 @@ a.out
 *.mid
 *.sh
 .DS_Store
-
