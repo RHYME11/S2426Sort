@@ -1,6 +1,8 @@
 // c++ $(root-config --cflags) -Iinclude macros/cxx/physicstree_promptgood.cxx -Lbuild/lib -Wl,-rpath,$PWD/build/lib -lHISTOGRAMER -lS2426PHYSICS -lTMIDAS -lCHANNEL $(root-config --libs) -o macros/cxx/bin/physicstree_promptgood
 
 #include <cstdio>
+#include <filesystem>
+#include <string>
 
 #include <TFile.h>
 #include <TTree.h>
@@ -12,19 +14,21 @@
 
 // ============== main ==============
 // Purpose: Fill histograms from PromptGoodTree.
-// Inputs: Physics ROOT filename.
-// Outputs: Histogram ROOT file.
+// Inputs: Physics ROOT file path.
+// Outputs: Histogram ROOT file named from the input basename.
 int main(int argc, char** argv) {
   if(argc != 2) {
-    std::printf("usage: %s physics<run>_<subrun>.root\n", argv[0]);
+    std::printf("usage: %s path/to/physics<run>_<subrun>.root\n", argv[0]);
     return 1;
   }
 
   Channel::Read("cal/CalibrationFile_May1526_pol1.cal");
 
-  TFile* infile = TFile::Open(Form("ttreeOutput/%s", argv[1]));
+  const std::filesystem::path inputPath(argv[1]);
+  const std::string inputName = inputPath.filename().string();
+  TFile* infile = TFile::Open(inputPath.c_str());
   if(!infile || infile->IsZombie()) {
-    std::printf("failed to open ttreeOutput/%s\n", argv[1]);
+    std::printf("failed to open %s\n", inputPath.c_str());
     return 1;
   }
 
@@ -40,8 +44,9 @@ int main(int argc, char** argv) {
   tree->SetBranchAddress("Tigress", &tig);
   tree->SetBranchAddress("Emma", &emma);
 
-  Histogramer::Get()->SetOutputPath(
-    Form("histOutput/physicstree_promptgood/hist_%s", argv[1]));
+  const std::string outputPath =
+    "histOutput/physicstree_promptgood/hist_" + inputName;
+  Histogramer::Get()->SetOutputPath(outputPath);
 
   long nentries = tree->GetEntries();
   long xentry = 0;

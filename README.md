@@ -61,12 +61,15 @@ created.
 
 Build the standalone PromptGoodTree sorter from the project root using the
 compile command on the first line of
-`macros/cxx/physicstree_promptgood.cxx`. A bare input filename is read from
-`ttreeOutput`:
+`macros/cxx/physicstree_promptgood.cxx`. Pass the input ROOT file path directly:
 
 ```bash
-./physicstree_promptgood physics62261_001.root
+./macros/cxx/bin/physicstree_promptgood \
+  ttreeOutput/physics62261_001.root
 ```
+
+Only the input basename is used for the output name, regardless of how long
+the input directory path is.
 
 The sorter uses the shared `Histogramer` class to fill the EMMA Si and
 IC0--IC3 multiplicity histograms for entries with both Left and Right hits.
