@@ -20,6 +20,7 @@ class Histogramer {
     ~Histogramer();
     
     void SetRun(int run,int subrun);
+    void SetOutputPath(const std::string& outputPath);
     int SetBlobGates(std::string cutfile);
 
     static void Close();
@@ -38,6 +39,7 @@ class Histogramer {
     mutable std::mutex fMutex;
     int fRun;
     int fSubrun;
+    std::string fOutputPath;
 
     TList *fBlobGates;
 

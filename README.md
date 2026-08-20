@@ -65,8 +65,9 @@ compile command on the first line of
 ./physicstree_promptgood physics62261_001.root
 ```
 
-The sorter fills the EMMA Si and IC0--IC3 multiplicity histograms for entries
-with both Left and Right hits. Its output is:
+The sorter uses the shared `Histogramer` class to fill the EMMA Si and
+IC0--IC3 multiplicity histograms for entries with both Left and Right hits.
+Its output is:
 
 ```text
 histOutput/physicstree_promptgood/hist_physics62261_001.root

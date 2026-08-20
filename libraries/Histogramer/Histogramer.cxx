@@ -35,6 +35,14 @@ void Histogramer::SetRun(int run,int subrun) {
   fSubrun = subrun;
 }
 
+// ============== SetOutputPath ==============
+// Purpose: Override the default run-based histogram output filename.
+// Inputs: Destination ROOT file path.
+// Outputs: None.
+void Histogramer::SetOutputPath(const std::string& outputPath) {
+  fOutputPath = outputPath;
+}
+
 int Histogramer::SetBlobGates(std::string cutfile) {
   if(!fBlobGates)
     fBlobGates = new TList;
@@ -67,10 +75,12 @@ Histogramer::~Histogramer() {
   if(gHistMap) {
     int run,subrun;
 
-    std::string outDir = "histOutput";
-    if(!std::filesystem::exists(outDir))
-      std::filesystem::create_directory(outDir);
-    TFile *outFile = new TFile(Form("%s/hist%i_%03i.root",outDir.c_str(),fRun,fSubrun),"recreate");
+    std::filesystem::path outputPath = fOutputPath;
+    if(outputPath.empty())
+      outputPath = Form("histOutput/hist%i_%03i.root",fRun,fSubrun);
+    if(outputPath.has_parent_path())
+      std::filesystem::create_directories(outputPath.parent_path());
+    TFile *outFile = new TFile(outputPath.c_str(),"recreate");
     std::map<std::string,TList*>::iterator it;
     int counter = 0;
 
@@ -169,7 +179,6 @@ void Histogramer::Fill(std::string dname,std::string hname,
   return;
 
 }
-
 
 
 

@@ -1,4 +1,4 @@
-// c++ $(root-config --cflags) -Iinclude macros/cxx/physicstree_promptgood.cxx -Lbuild/lib -Wl,-rpath,$PWD/build/lib -lPHYSICS -lTMIDAS -lCHANNEL $(root-config --libs) -o physicstree_promptgood
+// c++ $(root-config --cflags) -Iinclude macros/cxx/physicstree_promptgood.cxx -Lbuild/lib -Wl,-rpath,$PWD/build/lib -lHISTOGRAMER -lPHYSICS -lTMIDAS -lCHANNEL $(root-config --libs) -o physicstree_promptgood
 
 #include <cstdio>
 #include <filesystem>
@@ -7,10 +7,10 @@
 #include <system_error>
 
 #include <TFile.h>
-#include <TH1D.h>
 #include <TTree.h>
 
 #include <Emma.h>
+#include <Histogramer.h>
 
 // ============== ResolveInputPath ==============
 // Purpose: Use an explicit input path or find a bare filename in ttreeOutput.
@@ -64,42 +64,10 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  const std::filesystem::path outputDirectory =
-    std::filesystem::path("histOutput") / "physicstree_promptgood";
-  std::error_code directoryError;
-  std::filesystem::create_directories(outputDirectory, directoryError);
-  if(directoryError) {
-    std::fprintf(stderr, "failed to create output directory %s: %s\n",
-                 outputDirectory.c_str(), directoryError.message().c_str());
-    tree->ResetBranchAddresses();
-    delete emma;
-    return 1;
-  }
-
   const std::filesystem::path outputPath =
-    outputDirectory / (std::string("hist_") + inputPath.filename().string());
-  std::unique_ptr<TFile> outputFile(TFile::Open(outputPath.c_str(), "RECREATE"));
-  if(!outputFile || outputFile->IsZombie()) {
-    std::fprintf(stderr, "failed to create output file: %s\n", outputPath.c_str());
-    tree->ResetBranchAddresses();
-    delete emma;
-    return 1;
-  }
-
-  TDirectory* emmaDirectory = outputFile->mkdir("EMMA");
-  if(!emmaDirectory) {
-    std::fprintf(stderr, "failed to create EMMA directory in output file\n");
-    tree->ResetBranchAddresses();
-    delete emma;
-    return 1;
-  }
-  emmaDirectory->cd();
-
-  TH1D siSize("Si.size()", "EMMA Si multiplicity;Multiplicity;Entries", 10, 0, 10);
-  TH1D ic0Size("IC0.size()", "EMMA IC0 multiplicity;Multiplicity;Entries", 10, 0, 10);
-  TH1D ic1Size("IC1.size()", "EMMA IC1 multiplicity;Multiplicity;Entries", 10, 0, 10);
-  TH1D ic2Size("IC2.size()", "EMMA IC2 multiplicity;Multiplicity;Entries", 10, 0, 10);
-  TH1D ic3Size("IC3.size()", "EMMA IC3 multiplicity;Multiplicity;Entries", 10, 0, 10);
+    std::filesystem::path("histOutput") / "physicstree_promptgood" /
+    (std::string("hist_") + inputPath.filename().string());
+  Histogramer::Get()->SetOutputPath(outputPath.string());
 
   const Long64_t entryCount = tree->GetEntries();
   Long64_t selectedCount = 0;
@@ -114,16 +82,15 @@ int main(int argc, char** argv) {
       continue;
     }
 
-    siSize.Fill(emma->Si().size());
-    ic0Size.Fill(emma->IC0().size());
-    ic1Size.Fill(emma->IC1().size());
-    ic2Size.Fill(emma->IC2().size());
-    ic3Size.Fill(emma->IC3().size());
+    Histogramer::Fill("EMMA", "Si.size()", 10, 0, 10, emma->Si().size());
+    Histogramer::Fill("EMMA", "IC0.size()", 10, 0, 10, emma->IC0().size());
+    Histogramer::Fill("EMMA", "IC1.size()", 10, 0, 10, emma->IC1().size());
+    Histogramer::Fill("EMMA", "IC2.size()", 10, 0, 10, emma->IC2().size());
+    Histogramer::Fill("EMMA", "IC3.size()", 10, 0, 10, emma->IC3().size());
     ++selectedCount;
   }
 
-  outputFile->Write();
-  outputFile->Close();
+  Histogramer::Close();
   tree->ResetBranchAddresses();
   delete emma;
   inputFile->Close();
