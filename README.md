@@ -9,6 +9,9 @@ detector-level physics objects, fills histograms, and writes ROOT trees.
 
 The project uses CMake and ROOT.
 
+The project physics data-model library is named `libS2426PHYSICS` to avoid a
+case-insensitive filename collision with ROOT's `libPhysics` on macOS.
+
 ```bash
 make
 ./bin/s2426Sort path/to/run.mid

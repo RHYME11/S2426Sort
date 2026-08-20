@@ -2,7 +2,7 @@
 add_library(OUTPUTMANAGER SHARED OutputManager.cxx)
 
 target_link_libraries(OUTPUTMANAGER PRIVATE
-  PHYSICS
+  S2426PHYSICS
   TMIDAS
   ROOT::Core
   ROOT::RIO
