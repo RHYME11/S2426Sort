@@ -6,6 +6,7 @@ tests/
 data/
 EMMA_DAQ/
 macros/cxx/bi
+bashcodes/
 
 *.o
 *.so

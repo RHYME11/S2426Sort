@@ -74,11 +74,14 @@ int main(int argc, char** argv) {
     for(int i=0;i<tig->Hits().size();i++){
       TigressHit tighit = tig->Hits()[i];
       double e1 = tighit.Doppler(beta);
+      long t1   = tighit.TimestampNs();
       if(e1<15) continue;
       if(tighit.KValue()!=379) continue;
       Histogramer::Fill("TIG","single", 8e3,0,8e3,tighit.Energy());
       Histogramer::Fill("TIG",Form("Doppler(b=%.3f)",beta),8e3,0,8e3,e1);
+      Histogramer::Fill("TIG",Form("summary Doppler(b=%.3f)",beta),64,0,64,tighit.ArrayNumber(),4e3,0,4e3,e1);
       Histogramer::Fill("PGAC", Form("PGACX vs Doppler(b=%.3f)",beta), 60,-30,30,emma->PGACX(), 4e3,0,4e3,e1);
+      if(!tighit.BGOFire()) Histogramer::Fill("PGAC/Gate", Form("BGO veto: PGACX vs Doppler(b=%.3f)",beta), 60,-30,30,emma->PGACX(), 4e3,0,4e3,e1);
       if(!emma->Si().empty() && !emma->IC0().empty()) 
         Histogramer::Fill("TIG/Gate",Form("Si && IC0 trigger: Doppler(b=%.3f)",beta),8e3,0,8e3,e1);
       if(!emma->Si().empty() && !emma->IC1().empty()) 
@@ -87,9 +90,52 @@ int main(int argc, char** argv) {
         Histogramer::Fill("TIG/Gate",Form("Si && IC2 trigger: Doppler(b=%.3f)",beta),8e3,0,8e3,e1);
       if(!emma->Si().empty() && !emma->IC3().empty()) 
         Histogramer::Fill("TIG/Gate",Form("Si && IC3 trigger: Doppler(b=%.3f)",beta),8e3,0,8e3,e1);
-      if(!tighit.BGOFire()) 
+      if(!tighit.BGOFire()) {
         Histogramer::Fill("TIG/Gate",Form("!BGO veto: Doppler(b=%.3f)",beta),8e3,0,8e3,e1);
-    }
+        Histogramer::Fill("TIG/Gate",Form("!BGO veto: summary Doppler(b=%.3f)",beta),64,0,64,tighit.ArrayNumber(),4e3,0,4e3,e1);
+      }
+      if(emma->PGACX()>-15 && emma->PGACX()<-6){
+        if(e1>=1250 && e1<=1300){
+          if(!emma->Si().empty() && !emma->IC0().empty()) 
+            Histogramer::Fill("PID/Gate",Form("Si vs IC0: Doppler(%.3f)=[1250,1300]keV && pGACX=(-15,-6)",beta), 4e3,0,4e3,emma->Si()[0].Charge(), 4e3,0,4e3,emma->IC0()[0].Charge());
+        }  
+        if(e1>=1200 && e1<=1250){
+          if(!emma->Si().empty() && !emma->IC0().empty()) 
+            Histogramer::Fill("PID/Gate",Form("Si vs IC0: Doppler(%.3f)=[1200,1250]keV && pGACX=(-15,-6)",beta), 4e3,0,4e3,emma->Si()[0].Charge(), 4e3,0,4e3,emma->IC0()[0].Charge());
+        }  
+        if(e1>=1330 && e1<=1380){
+          if(!emma->Si().empty() && !emma->IC0().empty()) 
+            Histogramer::Fill("PID/Gate",Form("Si vs IC0: Doppler(%.3f)=[1330,1380]keV && pGACX=(-15,-6)",beta), 4e3,0,4e3,emma->Si()[0].Charge(), 4e3,0,4e3,emma->IC0()[0].Charge());
+        }  
+      }
+       
+
+      for(int j=i+1;j<tig->Hits().size();j++){
+        TigressHit tighit2 = tig->Hits()[j];
+        double e2 = tighit2.Doppler(beta);
+        long t2   = tighit2.TimestampNs();   
+        if(e2<15) continue;
+        if(tighit2.KValue()!=379) continue;
+        double dtns;
+        double e;
+        if(e1>e2){
+          dtns = t2-t1;
+          e = e1;
+        }else{
+          dtns = t1 -t2;
+          e = e2;
+        }
+        Histogramer::Fill("TIG/Coinc",Form("dt(TimestampNs) vs Higher Dopper(b=%.3f)",beta),6e2,-3e3,3e3, dtns, 4000,0,4000,e);
+        if(dtns>=-50 && dtns<=150){ 
+          Histogramer::Fill("TIG/Coinc",Form("gg matrix: Doppler(%.3f) within dtns=[-50,150]ns",beta),4000,0,4000,e1,4000,0,4000,e2);
+          Histogramer::Fill("TIG/Coinc",Form("gg matrix: Doppler(%.3f) within dtns=[-50,150]ns",beta),4000,0,4000,e2,4000,0,4000,e1);
+          if((!tighit.BGOFire()) && (!tighit2.BGOFire())){
+            Histogramer::Fill("TIG/Coinc/Gate",Form("gg matrix(BGO veto): Doppler(%.3f) within dtns=[-50,150]ns",beta),4000,0,4000,e1,4000,0,4000,e2);
+            Histogramer::Fill("TIG/Coinc/Gate",Form("gg matrix(BGO veto): Doppler(%.3f) within dtns=[-50,150]ns",beta),4000,0,4000,e2,4000,0,4000,e1);
+          }
+        }
+      } // loop j over
+    } // loop i over
      
  
     if((xentry%5000)==0){
