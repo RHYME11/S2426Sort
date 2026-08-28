@@ -7,7 +7,6 @@ data/
 EMMA_DAQ/
 macros/cxx/bi
 bashcodes/
-TCutG/
 
 *.o
 *.so
