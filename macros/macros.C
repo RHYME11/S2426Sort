@@ -1,45 +1,77 @@
 {
-  //TFile *infile = TFile::Open("histOutput/physicstree_promptgood/master.root");
-  TH2D *hic2si[4];
-  hic2si[0] = (TH2D *)_file0->Get("PID/IC2/IC2 vs Si");
-  hic2si[1] = (TH2D *)_file0->Get("PID/IC2/PGACX=[-18,-13]: IC2 vs Si");
-  hic2si[2] = (TH2D *)_file0->Get("PID/IC2/PGACX=[-10,-5]: IC2 vs Si");
-  hic2si[3] = (TH2D *)_file0->Get("PID/IC2/PGACX=[3,8]: IC2 vs Si");
-
-  GCanvas *c0 = new GCanvas("c0","c0");
-  c0->Divide(3,2,0,0);
-  c0->cd(1);hic2si[0]->Draw("colz");hic2si[1]->Draw("same scat");
-  c0->cd(2);hic2si[0]->Draw("colz");hic2si[2]->Draw("same scat");
-  c0->cd(3);hic2si[0]->Draw("colz");hic2si[3]->Draw("same scat");
-  c0->cd(4);hic2si[1]->Draw("colz");
-  c0->cd(5);hic2si[2]->Draw("colz");
-  c0->cd(6);hic2si[3]->Draw("colz");
-
-  // ============================ //
-  TH2D *hpgac = (TH2D *)_file0->Get("TIG/PGACX vs Doppler(0.056)");
+  double pgacxg[3][2] = {{-18,-13},
+                         {-10,-5},
+                         {3,8}}; 
   TLine *tl[3][2];
-  tl[0][0] = new TLine(-18,0,-18,22e6);
-  tl[0][1] = new TLine(-13,0,-13,22e6);
-  tl[1][0] = new TLine(-10,0,-10,22e6);
-  tl[1][1] = new TLine(-5 ,0,-5 ,22e6);
-  tl[2][0] = new TLine(3  ,0,3  ,22e6);
-  tl[2][1] = new TLine(8  ,0,8  ,22e6);
+  for(int i=0;i<3;i++){
+    for(int j=0;j<2;j++){
+      tl[i][j] = new TLine(pgacxg[i][j],0,pgacxg[i][j],2e7);
+      tl[i][j]->SetLineWidth(2);
+      tl[i][j]->SetLineStyle(9);
+      if(i==0) tl[i][j]->SetLineColor(80);
+      if(i==1) tl[i][j]->SetLineColor(99);
+      if(i==2) tl[i][j]->SetLineColor(1);
+    }
+  }
 
-  tl[0][0]->SetLineStyle(9);  tl[0][0]->SetLineColor(kGreen);
-  tl[0][1]->SetLineStyle(9);  tl[0][1]->SetLineColor(kGreen);
-  tl[1][0]->SetLineStyle(9);  tl[1][0]->SetLineColor(kRed);
-  tl[1][1]->SetLineStyle(9);  tl[1][1]->SetLineColor(kRed);
-  tl[2][0]->SetLineStyle(9);  tl[2][0]->SetLineColor(kOrange);
-  tl[2][1]->SetLineStyle(9);  tl[2][1]->SetLineColor(kOrange);
+  //double pstart[5][2] = {{50  ,500},
+  //                       {3000,200},
+  //                       {3000,400},
+  //                       {50  ,700},
+  //                       {50  ,500}};
 
-  GCanvas *c1 = new GCanvas("c1","c1");
-  hpgac->ProjectionX()->Draw();
-  tl[0][0]->Draw("same");
-  tl[0][1]->Draw("same");
-  tl[1][0]->Draw("same");
-  tl[1][1]->Draw("same");
-  tl[2][0]->Draw("same");
-  tl[2][1]->Draw("same");
+  //TCutG *cutg[21];
+  //double px[5];
+  //double py[5];
+  //for(int i=0;i<20;i++){
+  //  cutg[i] = new TCutG(Form("cutg%i",i),5);
+  //  for(int j=0;j<5;j++){
+  //    py[j] = pstart[j][1]+i*100;
+  //    cutg[i]->SetPoint(j,pstart[j][0], py[j]);
+  //    cutg[i]->SetLineColor(i+1);
+  //    cutg[i]->SetLineWidth(2);
+  //  }
+  //}
+
+  TCutG *cutg[21];
+  TFile *cutf = TFile::Open("TCutG/physicstree_promptgood/SIIC_banana.root");
+  for(int i=0;i<21;i++){
+    cutg[i] = (TCutG *)cutf->Get(Form("cutg%i",i));
+    cutg[i]->SetLineColor(i+1); 
+    cutg[i]->SetLineWidth(2);
+  }
+
+  TH2D *pid[4];
+  for(int i=0;i<4;i++){
+    pid[i] = (TH2D *)_file0->Get(Form("PID/IC%i/IC%i vs Si",i,i));
+  }
+
+  TCanvas *c = new TCanvas("c","c");
+  c->Divide(2,2);
+  for(int i=0;i<4;i++){
+    c->cd(i+1);
+    gPad->SetLogz();
+    pid[i]->Draw("colz");
+    for(int j=0;j<21;j++){
+      cutg[j]->Draw("same");
+    }
+    c->Update();
+  }
+
+  //cutg[20] = new TCutG("cutg20",5);
+  //cutg[20]->SetPoint(0,50,50);
+  //cutg[20]->SetPoint(1,3000,50);
+  //cutg[20]->SetPoint(2,3000,200);
+  //cutg[20]->SetPoint(3,50,500);
+  //cutg[20]->SetPoint(4,50,50);
+
+  //TFile *newf = new TFile("TCutG/physicstree_promptgood/SIIC_banana.root","recreate");
+  //for(int i=0;i<=20;i++){
+  //  cutg[i]->Write();
+  //}
+  //newf->Close();
 
 
 }
+
+
