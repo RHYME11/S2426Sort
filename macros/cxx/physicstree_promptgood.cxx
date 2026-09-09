@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <numeric>
+#include <utility>
 
 #include <TFile.h>
 #include <TTree.h>
@@ -80,39 +81,37 @@ int main(int argc, char** argv) {
                          {-10,-5},
                          {3,8}}; 
 
-  std::vector<double> ics;
-
   long nentries = tree->GetEntries();
   long xentry = 0;
   for(xentry = 0; xentry < nentries; xentry++) {
     tree->GetEntry(xentry);
     if(emma->Left().size() == 0 || emma->Right().size() == 0) continue;
-    ics.clear();
     double pgacx = emma->PGACX();
-    if(!emma->IC0().empty() && emma->IC0()[0].Charge()<3500) ics.push_back(emma->IC0()[0].Charge());
-    if(!emma->IC1().empty() && emma->IC1()[0].Charge()<3500) ics.push_back(emma->IC1()[0].Charge());
-    if(!emma->IC2().empty() && emma->IC2()[0].Charge()<3500) ics.push_back(emma->IC2()[0].Charge());
-    if(!emma->IC3().empty() && emma->IC3()[0].Charge()<3500) ics.push_back(emma->IC3()[0].Charge());
-    if(!emma->Si().empty()  && emma->Si()[0].Charge()<3500)  ics.push_back(emma->Si()[0].Charge());
+    double ics[5] = {0,0,0,0,0};
+    std::pair<int,double> lastIC = {-1,0.0};
+    if(!emma->IC0().empty() && emma->IC0()[0].Charge()<3500) {ics[0] = emma->IC0()[0].Charge(); lastIC = {0,emma->IC0()[0].Charge()};}
+    if(!emma->IC1().empty() && emma->IC1()[0].Charge()<3500) {ics[1] = emma->IC1()[0].Charge(); lastIC = {1,emma->IC1()[0].Charge()};}
+    if(!emma->IC2().empty() && emma->IC2()[0].Charge()<3500) {ics[2] = emma->IC2()[0].Charge(); lastIC = {2,emma->IC2()[0].Charge()};}
+    if(!emma->IC3().empty() && emma->IC3()[0].Charge()<3500) {ics[3] = emma->IC3()[0].Charge(); lastIC = {3,emma->IC3()[0].Charge()};}
+    if(!emma->Si().empty()  && emma->Si()[0].Charge()<3500)  {ics[4] = emma->Si()[0].Charge();}
   
 // ========== check abnormal =============== //
-    bool hit[5] = { !emma->IC0().empty(),
-                    !emma->IC1().empty(),
-                    !emma->IC2().empty(),
-                    !emma->IC3().empty(),
-                    !emma->Si().empty()};
+    bool hit[5] = { !emma->IC0().empty() && emma->IC0()[0].Charge()<3500,
+                    !emma->IC1().empty() && emma->IC1()[0].Charge()<3500,
+                    !emma->IC2().empty() && emma->IC2()[0].Charge()<3500,
+                    !emma->IC3().empty() && emma->IC3()[0].Charge()<3500,
+                    !emma->Si().empty()  && emma->Si()[0].Charge()<3500};
     int missing = -1;
     for(int i=0;i<5;i++){
       if(!hit[i]) missing = i;
-      if(missing>0 && hit[i]) {
+      if(missing>=0 && hit[i]) {
         Histogramer::Fill("PID","Abnomal ions in EMMA", 10,0,10, missing);
         break;
       }
     } 
 // ========== check abnormal (over)=============== //
-    double sum = std::accumulate(ics.begin(), ics.end(), 0.0);
-    if(ics.size()>1 && ics.size()<5) Histogramer::Fill("PID/SUM",Form("IC%i vs Sum(no si)",ics.size()-1),2.5e3,0,10e3,sum, 1e3,0,4e3,ics.back());
-    else if (ics.size() == 5)        Histogramer::Fill("PID/SUM",     "IC3 vs Sum(has si)"              ,2.5e3,0,10e3,sum, 1e3,0,4e3,ics[3]);
+    double sum = std::accumulate(ics, ics+5, 0.0);
+    if(lastIC.first>0) Histogramer::Fill("PID/SUM",Form("IC%i vs Sum", lastIC.first),2.5e3,0,10e3,sum, 1e3,0,4e3,lastIC.second);
     if(!emma->Si().empty() && !emma->IC0().empty()){ 
       Histogramer::Fill("PID/IC0","IC0 vs Si", 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[0]);
     }
@@ -134,9 +133,9 @@ int main(int argc, char** argv) {
       int arry1 = tighit.ArrayNumber();
       if(e1<15) continue;
       if(tighit.KValue()!=379) continue;
+      if(tighit.BGOFire()) continue;
       /*Histogramer::Fill("TIG","no BGO veto: summary single",                  64,0,64,arry1,4e3,0,4e3,e1);
       Histogramer::Fill("TIG",Form("no BGO veto: summary Doppler(%.3f)",beta),64,0,64,arry1,4e3,0,4e3,e1);
-      if(tighit.BGOFire()) continue;
       Histogramer::Fill("TIG",Form("summary Doppler(%.3f)",beta) , 64,0,64,arry1  ,4e3,0,4e3,e1);
       Histogramer::Fill("TIG",Form("PGACX vs Doppler(%.3f)",beta), 60,-30,30,pgacx,4e3,0,4e3,e1);
       if(arry1<48) {
@@ -189,8 +188,9 @@ int main(int argc, char** argv) {
       }// ic2 vs si gate over
       */
       // ====== ics vs si gate starts ===== //
-      if(!emma->Si().empty()>0){
+      if(ics[4]){
         for(int m=0;m<4;m++){ // loop 4 ic
+          if(!ics[m]) continue;
           for(int n=0;n<=20;n++){ // loop 21 tcutg
             if(siic_cut[n]->IsInside(ics[4],ics[m])){
               if(arry1<48){
@@ -293,8 +293,9 @@ int main(int argc, char** argv) {
           }// ic2 vs si gate over
           */
           // ====== ics vs si gate starts ===== //
-          if(!emma->Si().empty()>0){
+          if(ics[4]){
             for(int m=0;m<4;m++){ // loop 4 ic
+            if(!ics[m]) continue;
               for(int n=0;n<=20;n++){ // loop 21 tcutg
                 if(siic_cut[n]->IsInside(ics[4],ics[m])){
                   //if(ics[4]<150){
