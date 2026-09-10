@@ -5,7 +5,7 @@ bin/
 tests/
 data/
 EMMA_DAQ/
-macros/cxx/bi
+macros/cxx/bin
 bashcodes/
 
 *.o
@@ -16,7 +16,6 @@ a.out
 *.swp
 *.log
 *.dat
-*.c
 *.mid
 *.sh
 .DS_Store
