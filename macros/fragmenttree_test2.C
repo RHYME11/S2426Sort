@@ -1,3 +1,5 @@
+#include <set>
+
 {
 
   Channel::Read("cal/CalibrationFile_May1526_pol1.cal");
@@ -9,11 +11,22 @@
   std::vector<Fragment> core;
   std::vector<Fragment> emt;
   std::vector<Fragment> others;
+  long coreTimestampNs = -1;
+  std::set<int> coreAddressesAtTimestamp;
   
   for(x;x<nentries;x++){                                                                         
     FragmentTree->GetEntry(x);
     if(ftg->DetType()==8) emt.push_back(*ftg);
-    if(ftg->DetType()==0) others.push_back(*ftg);
+    if(ftg->DetType()==0) {
+      const long timestampNs = ftg->TimestampNs();
+      if(timestampNs != coreTimestampNs) {
+        coreTimestampNs = timestampNs;
+        coreAddressesAtTimestamp.clear();
+      }
+      if(coreAddressesAtTimestamp.insert(ftg->Address()).second) {
+        others.push_back(*ftg);
+      }
+    }
     if(ftg->DetType()==14) others.push_back(*ftg);
   }
  
