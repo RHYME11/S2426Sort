@@ -68,7 +68,9 @@
       if(frag.DetType()==0 && frag.KValue()==379){ve.push_back(frag.Energy());}
     }
     if(anode_flag && left_flag && right_flag) {
-      for(double e:ve) hs->Fill(e);
+      for(double e:ve) {
+        if(e>40) hs->Fill(e);
+      }
     }
   } 
 
