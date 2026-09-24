@@ -182,13 +182,13 @@ int main(int argc, char** argv) {
           }// 21 tcutg loop over
         }// 4 ic loop over
       }// if si no empty over
-      if(ics[0] && ics[3]){ // if IC0 and IC3 not empty
-        for(m=0;m<12;m++){ // ic0 vs ic3 cut loop
-          if(ic3ic0_cut[m]->IsInsie(ics[3],ics[0])){
-            if(arr1<48) Histogramer::Fill("TIG/IC3_IC0_Gate", Form("PGACX vs Doppler(%.3f) gated ic3 vs ic0 %s mid ring",beta),60,-30,30,pgacx,4e3,0,4e3,e1);
-          }
-        }// ic0 vs ic3 cut over
-      }// if IC0 and IC3 no empty over
+      //if(ics[0] && ics[3]){ // if IC0 and IC3 not empty
+      //  for(int m=0;m<12;m++){ // ic0 vs ic3 cut loop
+      //    if(ic3ic0_cut[m]->IsInside(ics[3],ics[0])){
+      //      if(arry1<48) Histogramer::Fill("TIG/IC3_IC0_Gate", Form("PGACX vs Doppler(%.3f) gated ic3 vs ic0 %s mid ring",beta),60,-30,30,pgacx,4e3,0,4e3,e1);
+      //    }
+      //  }// ic0 vs ic3 cut over
+      //}// if IC0 and IC3 no empty over
 
 
 
@@ -213,50 +213,46 @@ int main(int argc, char** argv) {
         }
         Histogramer::Fill("TIG/Coinc",Form("dt(TimestampNs) vs Higher Dopper(b=%.3f)",beta),6e2,-3e3,3e3, dtns, 4000,0,4000,e);
         if(dtns>=-50 && dtns<=150){ 
+          Histogramer::Fill("TIG/Coinc/mid ring",Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns mid ring",beta), 2000,0,4000,e1,2000,0,4000,e2,60,-30,30,pgacx);
+          Histogramer::Fill("TIG/Coinc/mid ring",Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns mid ring",beta), 2000,0,4000,e2,2000,0,4000,e1,60,-30,30,pgacx);
           // ====== ics vs si gate starts ===== //
           if(ics[4]){
             for(int m=0;m<4;m++){ // loop 4 ic
-            if(!ics[m]) continue;
+              if(!ics[m]) continue;
               for(int n=0;n<=20;n++){ // loop 21 tcutg
                 if(siic_cut[n]->IsInside(ics[4],ics[m])){
                   if(arry1<48 && arry2<48){
                     if(ics[4]<150){
-                      Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Left/mid ring",m),Form("gg matrix: Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",beta,m,siic_cut[n]->GetName()),
-                                              2000,0,4000,e1,2000,0,4000,e2);
-                      Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Left/mid ring",m),Form("gg matrix: Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",beta,m,siic_cut[n]->GetName()),
-                                              2000,0,4000,e2,2000,0,4000,e1);
+                      Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Left/mid ring",m),
+                                        Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",beta,m,siic_cut[n]->GetName()),
+                                        2000,0,4000,e1,2000,0,4000,e2,60,-30,30,pgacx);
+                      Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Left/mid ring",m),
+                                        Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",beta,m,siic_cut[n]->GetName()),
+                                        2000,0,4000,e2,2000,0,4000,e1,60,-30,30,pgacx);
                     }else{
-                      Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Right/mid ring",m),Form("gg matrix: Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",beta,m,siic_cut[n]->GetName()),
-                                              2000,0,4000,e1,2000,0,4000,e2);
-                      Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Right/mid ring",m),Form("gg matrix: Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",beta,m,siic_cut[n]->GetName()),
-                                              2000,0,4000,e2,2000,0,4000,e1);
+                      Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Right/mid ring",m),
+                                        Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",beta,m,siic_cut[n]->GetName()),
+                                        2000,0,4000,e1,2000,0,4000,e2,60,-30,30,pgacx);
+                      Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Right/mid ring",m),
+                                        Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",beta,m,siic_cut[n]->GetName()),
+                                        2000,0,4000,e2,2000,0,4000,e1,60,-30,30,pgacx);
                     }
                   }
-                  for(int k=0;k<3;k++){ // pgacx gate                                                                                         
-                    if(pgacx>=pgacxg[k][0] && pgacx<=pgacxg[k][1]){
-                      if(arry1<48 && arry2<48){
-                        if(ics[4]<150){
-                          Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Left/mid ring",m),
-                                            Form("gg matrix:PGACX=[%.0f,%.0f]:Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",pgacxg[k][0],pgacxg[k][1],beta,m,siic_cut[n]->GetName()),
-                                            2000,0,4000,e1,2000,0,4000,e2);           
-                          Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Left/mid ring",m),
-                                            Form("gg matrix:PGACX=[%.0f,%.0f]:Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",pgacxg[k][0],pgacxg[k][1],beta,m,siic_cut[n]->GetName()),
-                                            2000,0,4000,e2,2000,0,4000,e1);
-                        }else{
-                          Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Right/mid ring",m),
-                                            Form("gg matrix:PGACX=[%.0f,%.0f]:Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",pgacxg[k][0],pgacxg[k][1],beta,m,siic_cut[n]->GetName()),
-                                            2000,0,4000,e1,2000,0,4000,e2);           
-                          Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Right/mid ring",m),
-                                            Form("gg matrix:PGACX=[%.0f,%.0f]:Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",pgacxg[k][0],pgacxg[k][1],beta,m,siic_cut[n]->GetName()),
-                                            2000,0,4000,e2,2000,0,4000,e1);
-                        }
-                      }// if array number over
-                    } // if pgacx over
-                  } // pgacx gate loop over
                 } // if tcug over
               } // 21 tcutg loop over
             } // 4 ic loop over
           } // if si no empty over
+          // ====== ic3 vs ic0 gates starts ===== //
+          //for(int m=0;m<12;m++){
+          //  if(ic3ic0_cut[m]->IsInside(ics[3],ics[0])){
+          //    if(arry1<48 && arry2<48){
+          //      Histogramer::Fill("TIG/Coinc/IC3_IC0_Gate/mid ring", Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns gated %s mid ring",beta,ic3ic0_cut[m]->GetName()),
+          //                        2000,0,4000,e1,2000,0,4000,e2,60,-30,30,pgacx);
+          //      Histogramer::Fill("TIG/Coinc/IC3_IC0_Gate/mid ring", Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns gated %s mid ring",beta,ic3ic0_cut[m]->GetName()),
+          //                        2000,0,4000,e2,2000,0,4000,e1,60,-30,30,pgacx);
+          //    }
+          //  } // if inside cut over
+          //} // loop 12 ic3_ic0 cut over
         }// if dtns over
       }// loop j over
     }// loop i over
