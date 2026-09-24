@@ -56,7 +56,7 @@ mode = auto
 rootFitOption = RQSN
 
 # TSpectrum background removal.
- option = none # none, global, local
+ option = global # none, global, local
 # iteration = 20
 # range = 185,205
 
@@ -98,6 +98,17 @@ relativeFwhm = true
 # init W[3] = 18
 # init H[3] = 300
 
+# Peak 4 position/FWHM/height initial values.
+ init W[0] = 15
+ init W[1] = 15
+ init W[2] = 15
+ init W[3] = 15
+ init W[4] = 15
+ init W[5] = 15
+ init W[6] = 15
+ init W[7] = 15
+ init W[8] = 15
+
 #####################################################################################
 # Limits
 #####################################################################################
@@ -133,12 +144,12 @@ limit WSCALE = 0.5 2.0
 #####################################################################################
 
 # Global shared fixed parameters.
- fix R = 0
+# fix R = 0
 # fix BETA = 1.5
 # fix STEP = 0
-fix A = 0;
-fix B = 0;
-fix C = 0;
+# fix A = 0;
+# fix B = 0;
+# fix C = 0;
 
 # FWHM scale fixed parameter. Used when relativeFwhm = true.
 # fix WSCALE = 1.0

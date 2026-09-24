@@ -58,7 +58,7 @@ mode = auto
 rootFitOption = RQSN
 
 # TSpectrum background removal.
- option = local, # none, global, local
+# option = local, # none, global, local
 # iteration = 20
 # range = 180,200
 

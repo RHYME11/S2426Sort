@@ -10,13 +10,14 @@
   long x = 0;                                             
   
   double beta = 0.056;
-  TH1D *hs = new TH1D("hs","single gamma(phytree)",8e3,0,8e3);
+  TH1D *hs = new TH1D("hs","single gamma from mid ring(phytree)",8e3,0,8e3);
   int count0, count1, count2, count3,count4, count5,count6, count7,count8, count9,count10;
   for(x=0;x<nentries;x++){
     tree->GetEntry(x);
     if(emma->Left().size()>0 && emma->Right().size()>0){
       for(int i=0;i<tig->Hits().size();i++){
         if(tig->Hits()[i].KValue()!=379) continue;
+        if(tig->Hits()[i].Number()>479) continue;
         double e = tig->Hits()[i].Energy();
         if(e>40)hs->Fill(e);
       } // i loop over

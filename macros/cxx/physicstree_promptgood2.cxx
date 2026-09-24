@@ -1,4 +1,4 @@
-// c++ $(root-config --cflags) -Iinclude macros/cxx/physicstree_promptgood.cxx -Lbuild/lib -Wl,-rpath,$PWD/build/lib -lHISTOGRAMER -lS2426PHYSICS -lTMIDAS -lCHANNEL $(root-config --libs) -o macros/cxx/bin/physicstree_promptgood
+// c++ $(root-config --cflags) -Iinclude macros/cxx/physicstree_promptgood2.cxx -Lbuild/lib -Wl,-rpath,$PWD/build/lib -lHISTOGRAMER -lS2426PHYSICS -lTMIDAS -lCHANNEL $(root-config --libs) -o macros/cxx/bin/physicstree_promptgood2
 
 #include <cstdio>
 #include <filesystem>
@@ -53,27 +53,15 @@ int main(int argc, char** argv) {
   Histogramer::Get()->SetOutputPath(outputPath);
 
   // ======== TCutG Load ======== //
-  TFile *cutfile0 = TFile::Open("TCutG/physicstree_promptgood/ic0_si/SiIC0_gamgated_banana.root");
-  TCutG *siic0_cut[2];
-  siic0_cut[0] = (TCutG *)cutfile0->Get("siic0_top");
-  siic0_cut[1] = (TCutG *)cutfile0->Get("siic0_bot");
-  TFile *cutfile1 = TFile::Open("TCutG/physicstree_promptgood/ic0_si/SiIC0_banana.root");
-  TCutG *siic0_cut2[7];
-  for(int m=0;m<7;m++){
-    siic0_cut2[m] = (TCutG *)cutfile1->Get(Form("cutg%i",m));
-  }
-  TFile *cutfile2 = TFile::Open("TCutG/physicstree_promptgood/ic2_si/SiIC2_banana.root");
-  TCutG *siic2_cut[3][7];
-  for(int m=0;m<7;m++){
-    siic2_cut[0][m] = (TCutG *)cutfile2->Get(Form("lic2si_cutg%i",m));
-    if(m==6) continue;
-    siic2_cut[1][m] = (TCutG *)cutfile2->Get(Form("mic2si_cutg%i",m));
-    siic2_cut[2][m] = (TCutG *)cutfile2->Get(Form("ric2si_cutg%i",m));
-  }
   TFile *cutfile3 = TFile::Open("TCutG/physicstree_promptgood/SIIC_banana.root");
   TCutG *siic_cut[21];
   for(int m=0;m<21;m++){
     siic_cut[m] = (TCutG *)cutfile3->Get(Form("cutg%i",m));
+  }
+  TFile *cutfile4 = TFile::Open("TCutG/physicstree_promptgood/ic0_ic3/IC3IC0_banana.root");
+  TCutG *ic3ic0_cut[12];
+  for(int m=0;m<12;m++){
+    ic3ic0_cut[m] = (TCutG *)cutfile4->Get(Form("cutg%i",m));
   }
   // ======== Par Setup ========= //
   double beta = 0.056;
@@ -137,6 +125,12 @@ int main(int argc, char** argv) {
     if(!emma->Si().empty() && !emma->IC3().empty()){ 
       Histogramer::Fill("PID/ICs","IC3 vs Si", 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[3]);
     }
+    if(!emma->IC3().empty() && !emma->IC0().empty()){ 
+      Histogramer::Fill("PID/ICs","IC0 vs IC3", 1e3,0,4e3,ics[3], 1e3,0,4e3,ics[0]);
+    }
+    if(!emma->IC3().empty() && !emma->IC0().empty() && emma->Si().empty()){ 
+      Histogramer::Fill("PID/ICs","IC0 vs IC3i when Si.empty", 1e3,0,4e3,ics[3], 1e3,0,4e3,ics[0]);
+    }
     // ==== pgacx gated PID ==== //
     if(pgacx>-20 && pgacx<10){
       int pgacx_int = (int)pgacx;    
@@ -152,6 +146,12 @@ int main(int argc, char** argv) {
       }
       if(!emma->Si().empty() && !emma->IC3().empty()){ 
         Histogramer::Fill(Form("PID/PGACXGate/%i/ICs",pgacx_int),Form("IC3 vs Si gated pgacx=[%i,%i)",pgacx_int, pgacx_int+1), 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[3]); 
+      }
+      if(!emma->IC3().empty() && !emma->IC0().empty()){ 
+        Histogramer::Fill(Form("PID/PGACXGate/%i/ICs",pgacx_int),Form("IC0 vs IC3 gated pgacx=[%i,%i)",pgacx_int, pgacx_int+1), 1e3,0,4e3,ics[3], 1e3,0,4e3,ics[0]); 
+      }
+      if(!emma->IC3().empty() && !emma->IC0().empty() && emma->Si().empty()){ 
+        Histogramer::Fill(Form("PID/PGACXGate/%i/ICs",pgacx_int),Form("IC0 vs IC3 gated pgacx=[%i,%i) whem Si.empty",pgacx_int, pgacx_int+1), 1e3,0,4e3,ics[3], 1e3,0,4e3,ics[0]); 
       }
     }
     // ==== TIG i loop start ==== // 
@@ -182,6 +182,14 @@ int main(int argc, char** argv) {
           }// 21 tcutg loop over
         }// 4 ic loop over
       }// if si no empty over
+      if(ics[0] && ics[3]){ // if IC0 and IC3 not empty
+        for(m=0;m<12;m++){ // ic0 vs ic3 cut loop
+          if(ic3ic0_cut[m]->IsInsie(ics[3],ics[0])){
+            if(arr1<48) Histogramer::Fill("TIG/IC3_IC0_Gate", Form("PGACX vs Doppler(%.3f) gated ic3 vs ic0 %s mid ring",beta),60,-30,30,pgacx,4e3,0,4e3,e1);
+          }
+        }// ic0 vs ic3 cut over
+      }// if IC0 and IC3 no empty over
+
 
 
 
@@ -252,7 +260,7 @@ int main(int argc, char** argv) {
         }// if dtns over
       }// loop j over
     }// loop i over
-
+    
 
     if((xentry%5000)==0){
       printf("on entry = %lu / %lu \r", xentry, nentries);

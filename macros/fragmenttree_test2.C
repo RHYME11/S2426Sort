@@ -50,7 +50,7 @@
   }
   if(j<others.size()) delay.emplace_back(others.begin()+j,others.end());
  
-  TH1D *hs = new TH1D("hs", "single gamma", 8e3,0,8e3); 
+  TH1D *hs = new TH1D("hs", "single gamma from mid ring (fragtree)", 8e3,0,8e3); 
   std::vector<double> ve;
   for(auto it=prompt.begin();it!=prompt.end();it++){
     ve.clear();
@@ -65,7 +65,7 @@
         else if(channel==3) {left_flag = true;}
         else if(channel==4) {right_flag = true;}
       }
-      if(frag.DetType()==0 && frag.KValue()==379){ve.push_back(frag.Energy());}
+      if(frag.DetType()==0 && frag.KValue()==379 && frag.Number()<480){ve.push_back(frag.Energy());}
     }
     if(anode_flag && left_flag && right_flag) {
       for(double e:ve) {

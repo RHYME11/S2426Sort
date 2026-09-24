@@ -11,11 +11,20 @@
     EventTree->GetEntry(x);
     bool emv = false;
     bool emt = false;
+    bool anode = false;
+    bool left = false;
+    bool right = false;
     int count = 0;
     for(int m=0;m<eve->Fragments().size();m++){
       int dettype = eve->Fragments()[m].DetType();
       if(dettype == 8) {emt = true; count++;}
-      if(dettype ==13 || dettype == 14) emv = true;
+      if(dettype == 14) {
+        emv = true;
+        int channel = eve->Fragments()[m].Address() &0xff;
+        if(channel>=0 && channel<=2) anode = true;
+        if(channel == 3) left = true;
+        if(channel == 4) right = true;
+      }
     }
     if(emv){
       count0++;
@@ -23,6 +32,12 @@
       else count2++;
     }
     if(emt && !emv) {count3++; vemt.push_back(count);printf("entry = %lu\n",x);}
+    if(anode && left && right) {
+      count4++;
+      if(emt) count5++;
+      else count6++;
+    }
+  
   }
 
   printf("total events           = %lu\n",EventTree->GetEntries());
@@ -30,5 +45,8 @@
   printf("events have vme && emt = %d\n", count1);
   printf("events have vme no emt = %d\n", count2);
   printf("events have emt no vme = %d\n", count3);
+  printf("events have good vme   = %d\n", count4);
+  printf("events have good vme && emt = %d\n", count5);
+  printf("events have good vme no emt = %d\n", count6);
 
 }
