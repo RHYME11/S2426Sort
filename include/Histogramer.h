@@ -27,11 +27,13 @@ class Histogramer {
 
     static void Fill(std::string hname,
                       int xbins,double xlow, double xhigh, double xval,
-                      int ybins=-1,double ylow=-1,double yhigh=-1,double yval=-1);
+                      int ybins=-1,double ylow=-1,double yhigh=-1,double yval=-1,
+                      int zbins=-1,double zlow=-1,double zhigh=-1,double zval=-1);
 
     static void Fill(std::string dname,std::string name,
                       int xbins,double xlow, double xhigh, double xval,
-                      int ybins=-1,double ylow=-1,double yhigh=-1,double yval=-1);
+                      int ybins=-1,double ylow=-1,double yhigh=-1,double yval=-1,
+                      int zbins=-1,double zlow=-1,double zhigh=-1,double zval=-1);
 
     TList *GetBlobs() const { return fBlobGates; }
 

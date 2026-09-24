@@ -1,5 +1,6 @@
 
 
+#include <cstdio>
 #include <filesystem>
 #include <sstream>
 
@@ -11,6 +12,7 @@
 #include <TCutG.h>
 #include <TH1.h>
 #include <TH2.h>
+#include <TH3.h>
 
 
 Histogramer                  *Histogramer::fHistogramer = 0;
@@ -144,17 +146,36 @@ Histogramer::~Histogramer() {
 }
 
 
+// ============== Fill ==============
+// Purpose: Fill a histogram in the default output directory.
+// Inputs: Histogram name, axis definitions, and coordinate values.
+// Outputs: None.
 void Histogramer::Fill(std::string hname,
           int xbins,double xlow, double xhigh, double xval,
-          int ybins,double ylow,double yhigh,double yval) {
+          int ybins,double ylow,double yhigh,double yval,
+          int zbins,double zlow,double zhigh,double zval) {
   std::string dname = "noname";
-  Fill(dname,hname,xbins,xlow,xhigh,xval,ybins,ylow,yhigh,yval);
+  Fill(dname,hname,xbins,xlow,xhigh,xval,
+       ybins,ylow,yhigh,yval,zbins,zlow,zhigh,zval);
 }
 
+// ============== Fill ==============
+// Purpose: Fill a one-, two-, or three-dimensional histogram.
+// Inputs: Directory and histogram names, axis definitions, and coordinates.
+// Outputs: None.
 void Histogramer::Fill(std::string dname,std::string hname,
           int xbins,double xlow, double xhigh, double xval,
-          int ybins,double ylow,double yhigh,double yval) {
+          int ybins,double ylow,double yhigh,double yval,
+          int zbins,double zlow,double zhigh,double zval) {
   std::lock_guard<std::mutex> lock(gHistMutex);
+  if(zbins>0 && (xbins<=0 || ybins<=0)) {
+    fprintf(stderr,
+            "Histogramer::Fill: TH3D '%s/%s' requires positive X-, Y-, and Z-axis bins\n",
+            dname.c_str(),hname.c_str());
+    return;
+  }
+
+  int requestedDimension = zbins>0 ? 3 : (ybins>0 ? 2 : 1);
   if(!gHistMap) 
     gHistMap = new std::map<std::string, TList*>;
   if(!((*gHistMap)[dname])) {
@@ -164,7 +185,10 @@ void Histogramer::Fill(std::string dname,std::string hname,
   //TH1 *hist = static_cast<TH1*>(gHistMap->at(dname)->FindObject(hname.c_str()));
   TH1 *hist = (TH1*)clist->FindObject(hname.c_str());
   if(!hist) {
-    if(ybins>0) 
+    if(zbins>0)
+      hist = new TH3D(hname.c_str(),hname.c_str(),
+                      xbins,xlow,xhigh,ybins,ylow,yhigh,zbins,zlow,zhigh);
+    else if(ybins>0)
       hist = new TH2D(hname.c_str(),hname.c_str(),xbins,xlow,xhigh,ybins,ylow,yhigh);
     else 
       hist = new TH1D(hname.c_str(),hname.c_str(),xbins,xlow,xhigh);
@@ -172,13 +196,20 @@ void Histogramer::Fill(std::string dname,std::string hname,
     //printf("creating histogram:  %s  %s\n",  
     clist->Add(hist);
   }
-  if(ybins>0) 
+
+  if(hist->GetDimension()!=requestedDimension) {
+    fprintf(stderr,
+            "Histogramer::Fill: histogram '%s/%s' is %dD, but this fill requests %dD\n",
+            dname.c_str(),hname.c_str(),hist->GetDimension(),requestedDimension);
+    return;
+  }
+
+  if(zbins>0)
+    static_cast<TH3*>(hist)->Fill(xval,yval,zval);
+  else if(ybins>0)
     hist->Fill(xval,yval);
   else 
     hist->Fill(xval);
   return;
 
 }
-
-
-

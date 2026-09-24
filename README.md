@@ -429,6 +429,25 @@ All histograms remain controlled by `Histogramer`. DetectorProcess fills
 TIGRESS singles, Emma/Tigress summaries, detector group sizes, and prompt or
 background group-size histograms.
 
+`Histogramer::Fill` creates fixed-width `TH1D`, `TH2D`, or `TH3D` objects from
+the supplied axis definitions. The directory name is optional:
+
+```cpp
+Histogramer::Fill("energy", 4000, 0, 4000, energy);
+
+Histogramer::Fill("PID", "anode_vs_si",
+                  1000, 0, 4000, anode,
+                  1000, 0, 4000, si);
+
+Histogramer::Fill("Coincidence", "energy_energy_time",
+                  4000, 0, 4000, energy1,
+                  4000, 0, 4000, energy2,
+                  600, -3000, 3000, deltaTime);
+```
+
+Reusing a histogram name in the same directory requires the same dimension.
+Dimension-mismatched fills are reported and skipped.
+
 The previous `fADCTime` and `fTDCTime` state has been removed from Emma. The
 `emma_adc_tdc_time` and `emma_tig_dt` histogram fills that depended on those
 values are also removed.
