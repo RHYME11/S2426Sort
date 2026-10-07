@@ -6,7 +6,7 @@ add_library(S2426PHYSICS SHARED
   Emma.cxx
   TipHit.cxx
   TipPulseAnalyzer.cxx
-  TipPulseAnalyzer.h
+  ${CMAKE_SOURCE_DIR}/include/TipPulseAnalyzer.h
   ${CMAKE_SOURCE_DIR}/include/TipHit.h
   ${CMAKE_SOURCE_DIR}/include/TipGeometry.h
 )

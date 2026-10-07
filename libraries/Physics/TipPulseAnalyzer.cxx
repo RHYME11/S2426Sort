@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "TipPulseAnalyzer.h"
+#include <TipPulseAnalyzer.h>
 
 #include <algorithm>
 #include <array>

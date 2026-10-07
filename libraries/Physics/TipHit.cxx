@@ -3,7 +3,7 @@
 #include <Fragment.h>
 #include <TipGeometry.h>
 
-#include "TipPulseAnalyzer.h"
+#include <TipPulseAnalyzer.h>
 
 #include <cstdio>
 
