@@ -92,7 +92,40 @@ Its output is:
 histOutput/physicstree_promptgood/hist_physics62261_001.root
 ```
 
-Their schemas are:
+### FragmentTree histogram sorter
+
+Build `macros/cxx/fragmenttree.cxx` with its first-line compile command from
+the project root, then run:
+
+```bash
+./macros/cxx/bin/fragmenttree ttreeOutput/fragment62261_001.root
+```
+
+The sorter reads `FragmentTree/Fragment` twice. The first pass indexes BGO
+fragments (`DetType == 3`) with `Charge() > Tigress::SUPPRESSION_CHARGE` by
+detector number and sorts their `Time()` values. The second pass fills only
+CoreA (`DetType == 0`) fragments without a qualifying BGO on the same detector.
+The shared defaults are `Charge() > 20` and
+`-300 < core.Time() - bgo.Time() < 300` ns, with both time boundaries excluded.
+Crystal color and BGO segment do not restrict the detector-level veto.
+Invalid channel names and invalid times are skipped.
+
+BGO lookup spans the input file, including BGO entries before or after the
+core and across DetectorEvent boundaries. It can therefore differ from
+PhysicsTree suppression at event boundaries; BGO entries in other files are
+not considered. The sorter uses `cal/CalibrationFile_May1526_pol1.cal` for
+channel names and retains the input fragments' saved energies.
+
+Accepted cores fill `sum_charge`, `sum_energy`, and each `ArrayN` directory's
+`energy` and `time/10sec_energy` histograms. The time histogram retains the
+raw timestamp in units of 10 seconds. Output is written to
+`histOutput/fragmenttree/hist_fragment62261_001.root`; if no cores are
+accepted, `Histogramer` does not create a file. The console reports accepted,
+BGO-vetoed, and invalid CoreA counts.
+The 7000-by-4000 time histograms require about 10 GiB of bin storage when all
+48 calibrated CoreA arrays receive accepted entries.
+
+The TTree schemas are:
 
 ```text
 fragment<run>_<subrun>.root
