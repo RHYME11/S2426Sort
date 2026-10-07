@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <mutex>
+#include <atomic>
 
 #include <TList.h>
 
@@ -14,6 +15,7 @@ class Histogramer {
     static Histogramer *fHistogramer;
     static std::map<std::string,TList*> *gHistMap;
     static std::mutex gHistMutex;
+    static std::atomic<bool> gEnabled;
   
   public:
     static Histogramer *Get(); 
@@ -24,6 +26,7 @@ class Histogramer {
     int SetBlobGates(std::string cutfile);
 
     static void Close();
+    static void SetEnabled(bool enabled);
 
     static void Fill(std::string hname,
                       int xbins,double xlow, double xhigh, double xval,

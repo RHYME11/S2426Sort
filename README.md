@@ -18,6 +18,18 @@ make
 make clean
 ```
 
+To write all TTree files without creating or filling any histograms:
+
+```bash
+./bin/s2426Sort --no-histograms path/to/run.mid
+```
+
+This mode keeps the complete event and detector processing pipeline and writes
+FragmentTree, EventTree, and all Physics trees. It disables histogram fills in
+both raw-bank decoding and detector processing, and creates no histogram output
+file. Histograms remain enabled by default. The flag may also be combined with
+`--fragment-only`.
+
 For source measurements without EMMA reference hits, write only the
 time-ordered FragmentTree:
 

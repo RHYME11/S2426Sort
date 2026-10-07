@@ -18,6 +18,15 @@
 Histogramer                  *Histogramer::fHistogramer = 0;
 std::map<std::string,TList*> *Histogramer::gHistMap     = 0;
 std::mutex                    Histogramer::gHistMutex;
+std::atomic<bool>              Histogramer::gEnabled{true};
+
+// ============== SetEnabled ==============
+// Purpose: Enable or disable histogram filling and output process-wide.
+// Inputs: Histogram enable flag, normally set before starting workers.
+// Outputs: None.
+void Histogramer::SetEnabled(bool enabled) {
+  gEnabled.store(enabled, std::memory_order_relaxed);
+}
 
 Histogramer *Histogramer::Get() { 
   static std::mutex instanceMutex;
@@ -74,7 +83,7 @@ void Histogramer::Close() {
 
 
 Histogramer::~Histogramer() { 
-  if(gHistMap) {
+  if(gEnabled.load(std::memory_order_relaxed) && gHistMap) {
     int run,subrun;
 
     std::filesystem::path outputPath = fOutputPath;
@@ -154,6 +163,7 @@ void Histogramer::Fill(std::string hname,
           int xbins,double xlow, double xhigh, double xval,
           int ybins,double ylow,double yhigh,double yval,
           int zbins,double zlow,double zhigh,double zval) {
+  if(!gEnabled.load(std::memory_order_relaxed)) return;
   std::string dname = "noname";
   Fill(dname,hname,xbins,xlow,xhigh,xval,
        ybins,ylow,yhigh,yval,zbins,zlow,zhigh,zval);
@@ -167,6 +177,7 @@ void Histogramer::Fill(std::string dname,std::string hname,
           int xbins,double xlow, double xhigh, double xval,
           int ybins,double ylow,double yhigh,double yval,
           int zbins,double zlow,double zhigh,double zval) {
+  if(!gEnabled.load(std::memory_order_relaxed)) return;
   std::lock_guard<std::mutex> lock(gHistMutex);
   if(zbins>0 && (xbins<=0 || ybins<=0)) {
     fprintf(stderr,

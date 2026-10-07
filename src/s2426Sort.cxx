@@ -36,27 +36,32 @@ const std::chrono::seconds interval(1); // 1 second interval
 
 int main(int argc, char **argv) {
   bool fragmentOnly = false;
+  bool noHistograms = false;
   const char* inputPath = nullptr;
   for(int index = 1; index < argc; ++index) {
     const std::string argument = argv[index];
     if(argument == "--fragment-only") {
       fragmentOnly = true;
+    } else if(argument == "--no-histograms") {
+      noHistograms = true;
     } else if(!inputPath) {
       inputPath = argv[index];
     } else {
-      fprintf(stderr, "usage: %s [--fragment-only] input.mid\n", argv[0]);
+      fprintf(stderr, "usage: %s [--fragment-only] [--no-histograms] input.mid\n", argv[0]);
       return 2;
     }
   }
   if(!inputPath) {
-    fprintf(stderr, "usage: %s [--fragment-only] input.mid\n", argv[0]);
+    fprintf(stderr, "usage: %s [--fragment-only] [--no-histograms] input.mid\n", argv[0]);
     return 2;
   }
 
   TMidasFile infile(inputPath);
   TMidasEvent event;
 
-  Histogramer *gHist = fragmentOnly ? nullptr : Histogramer::Get();
+  const bool fillHistograms = !fragmentOnly && !noHistograms;
+  Histogramer::SetEnabled(fillHistograms);
+  Histogramer *gHist = fillHistograms ? Histogramer::Get() : nullptr;
 
   int run,subrun;
   getRunNumber(inputPath,run,subrun);
@@ -69,6 +74,7 @@ int main(int argc, char **argv) {
   printf(" \trun:    %i\n",run);
   printf(" \tsubrun: %i\n",subrun);
   printf(" \tmode:   %s\n",fragmentOnly ? "fragment-only" : "full");
+  printf(" \thistograms: %s\n",fillHistograms ? "on" : "off");
 
   Channel::Read("cal/CalibrationFile_Oct0626_pol1.cal");
   //start event builder;
@@ -99,7 +105,7 @@ int main(int argc, char **argv) {
                 std::vector<std::unique_ptr<Fragment>> fragments;
                 if((banksize = event.LocateBank(nullptr, "GRF4", &ptr)) > 0) {
                   banksFound["GRIF4"]++;
-                  MakeTigressFragments((uint32_t*)ptr,banksize,fragments,!fragmentOnly);
+                  MakeTigressFragments((uint32_t*)ptr,banksize,fragments,fillHistograms);
                 } 
                 if((banksize = event.LocateBank(nullptr, "MADC", &ptr)) > 0) {
                   banksFound["MADC"]++;     // adc
@@ -110,7 +116,7 @@ int main(int argc, char **argv) {
                   banksFound["EMMT"]++;   // tdc
                   if(!haveEmmaAdcTimestamp) 
                     printf(RED "EMMA TDC without ADC" RESET_COLOR "\n");
-                  MakeEmmaTDC((uint32_t*)ptr,banksize,emmaAdcTimestamp,fragments,!fragmentOnly);
+                  MakeEmmaTDC((uint32_t*)ptr,banksize,emmaAdcTimestamp,fragments,fillHistograms);
                 }
                 EventBuilder::Get()->pushBatch(std::move(fragments));
                 if(fragmentOnly) {
@@ -166,7 +172,7 @@ int main(int argc, char **argv) {
   doStatus(infile,false,true,true);
 
   OutputManager::Close();
-  gHist->Close();
+  Histogramer::Close();
   return 0;
 }
 
