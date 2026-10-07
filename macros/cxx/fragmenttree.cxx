@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
     int arrynum = (detnum - 1) * 4 + xtalnum;
     Histogramer::Fill("sum_charge",64,0,64,arrynum, 4e3,0,16e3,chg);
     Histogramer::Fill("sum_energy",64,0,64,arrynum, 4e3,0,4e3 ,e);
-    Histogramer::Fill(Form("Array%i",arrynum),"time_energy", 2000,0,2000,tsns/pow(10,9), 1e3,0,4e3 ,e);
+    Histogramer::Fill(Form("Array%i",arrynum),"time/10sec_energy", 7000,0,7000,tsns/pow(10,9)/10., 4e3,0,4e3 ,e);
     Histogramer::Fill(Form("Array%i",arrynum),"energy"     , 4e3,0,4e3 ,e);
 
     if((xentry%5000)==0){
