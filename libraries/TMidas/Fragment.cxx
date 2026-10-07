@@ -15,7 +15,7 @@ Fragment::~Fragment() { }
 // ============== Unpack ==============
 // Purpose: Decode GRF4 fields and save waveform samples for TIP addresses.
 // Inputs: Raw fragment words and fragment length.
-// Outputs: Decoded fields; false if timestamp words are invalid.
+// Outputs: Decoded fields; false if timestamp or charge/CFD words are invalid.
 bool Fragment::Unpack(uint32_t *data,int &nwords) {
 
   int cword =0; // points to header;
@@ -82,6 +82,17 @@ bool Fragment::Unpack(uint32_t *data,int &nwords) {
     }
     cword+=1;
     datum = *(data+cword);
+  }
+
+  // Require charge and CFD words before the trailer.
+  if (cword + 1 >= nwords) {
+    return false;
+  }
+
+  // Both words must be data words with bit 31 clear.
+  if ((data[cword] & 0x80000000u) != 0u ||
+      (data[cword + 1] & 0x80000000u) != 0u) {
+    return false;
   }
 
   // --- Parse Charge and Integration Values ---

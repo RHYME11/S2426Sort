@@ -154,8 +154,14 @@ addresses starting with `0x4` or `0x5`. This matches all 128 `TPC` channels in
 `cal/CalibrationFile_Oct0626_pol1.cal`; no other configured channels use these
 prefixes. Each waveform word contains two signed 14-bit samples, stored in
 order as `Short_t` values. Other fragments skip waveform words and keep an
-empty sample vector. Charge, integration, CFD, and event-building behavior
-remain unchanged.
+empty sample vector. For accepted fragments, charge, integration, CFD, and
+event-building behavior remain unchanged.
+
+After skipping waveform words, `Fragment::Unpack()` requires two charge/CFD
+data words before the trailer, both with bit 31 clear. It returns `false`
+when this pair is incomplete or has an invalid signature. The existing
+`MakeTigressFragments()` caller discards rejected fragments before event
+building. This check applies to all GRF4 fragments.
 
 `Fragment::Waveform()` returns the saved samples by const reference; its size
 is the saved sample count. `HasWave()` still reports the raw waveform flag.
