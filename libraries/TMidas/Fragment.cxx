@@ -59,13 +59,11 @@ bool Fragment::Unpack(uint32_t *data,int &nwords) {
   cword+=1;
 
   // --- Read Chunk VIII (Charge/Waveform Check) ---
-  if ((datum & 0xf0000000) == 0xc0000000) {
-    // Process waveform data words until the signature changes
-    while ((datum & 0xf0000000) == 0xc0000000) {
-      // (Waveform data processing would go here)
-      datum = *(data+cword);
-      cword+=1;
-    }
+  datum = *(data+cword);
+  while ((datum & 0xf0000000) == 0xc0000000) {
+    // (Waveform data processing would go here)
+    cword+=1;
+    datum = *(data+cword);
   }
 
   // --- Parse Charge and Integration Values ---
