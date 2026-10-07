@@ -15,6 +15,7 @@ case-insensitive filename collision with ROOT's `libPhysics` on macOS.
 ```bash
 make
 ./bin/s2426Sort path/to/run.mid
+make clean
 ```
 
 For source measurements without EMMA reference hits, write only the
@@ -33,7 +34,7 @@ files.
 The calibration file is currently selected in `src/s2426Sort.cxx`:
 
 ```text
-cal/CalibrationFile_May1526_pol1.cal
+cal/CalibrationFile_Oct0626_pol1.cal
 ```
 
 Run and subrun numbers are parsed from the input filename.
@@ -430,6 +431,69 @@ std::isfinite(emma.PGACX())
 ```
 
 `Emma::Print()` reports PGAC X and the size of every private hit vector.
+
+## TIP hit data model
+
+`TipHit` is built into `libS2426PHYSICS` together with a ROOT dictionary for
+`std::vector<TipHit>`. `make` builds the library, dictionary, rootmap, PCM, and
+sorter; `make clean` removes the generated `build/` and `bin/` directories.
+On macOS, load it from the project root in ROOT with:
+
+```cpp
+gSystem->Load("build/lib/libS2426PHYSICS.dylib");
+```
+
+On Linux the library suffix is `.so`. The physics library also links the
+project's TMIDAS and CHANNEL libraries; GRSISort libraries are not required.
+The dictionary supplies `TipHit` to ROOT after loading. For compiled code,
+include `TipHit.h` and link `S2426PHYSICS`.
+
+`TipHit(const Fragment&)` copies Name, Address, Number, Timestamp,
+TimestampNs, CFD, Time, Charge, Energy, and KValue, resolves TipChannel and
+Position, and fits a nonempty waveform once. All 16 stored quantities are
+private and exposed by getters named after the quantities. Copying a hit,
+reading it from ROOT, and calling its getters do not repeat fitting.
+The waveform remains on Fragment rather than being duplicated on TipHit.
+
+`Number()` is the calibration channel number. `TipChannel()` is the physical
+detector number (1--128), parsed from the three digits after `TPC` in the
+calibration name. For example, `TPC039N00X` has Number 732 but TipChannel 39.
+Position is stored in mm using
+`TipGeometry::GetPosition(TipChannel() - 1)`; the geometry retains GRSISort's
+128 coordinates, indexing, and invalid-index fallback `(0,0,1)`.
+`Time()` copies Fragment's CFD-based time in ns; `FitTime()` is an onset
+relative to waveform sample zero, in samples, not an absolute timestamp.
+`Charge()` copies TIP Q/K, and Energy uses the loaded energy calibration.
+
+The internal CsI fitter adapts the local GRSISort `TPulseAnalyzer` equations:
+50 baseline samples, an 8-sample peak filter, noise threshold 100, and decay
+constants RC=4510, fast=64.3, slow=380 in sample units. It selects the smallest
+positive chi-square/ndf among fast+slow (FitType 1), fast-only (2), and
+slow-only (3). PID is `100 * slow / fast`; a slow-only model can therefore
+produce infinity, as in GRSISort. FitChiSq stores the raw residual sum of
+squares truncated to int (saturated at INT_MAX for overflow).
+The source's gamma-on-PIN trial (type 4) uses an uninitialized decay constant;
+this CsI implementation omits that undefined trial rather than supplying an
+invented constant. The adapted fitter retains the upstream MIT notice.
+
+Without a waveform, PID, FitTime, FitChiSq, and FitType stay zero.
+With an unsuccessful fit, FitTime, FitChiSq, and FitType are -1, and PID is
+negative: -1 for fewer than 10 samples, -1036 for fewer than 50 baseline
+samples, -1034 for an invalid exclusion zone, or -1024 for model-fit failure.
+Short waveforms return a failure instead of exiting the sorter. Bounds and
+root-finding iteration guards prevent malformed waveforms from causing an
+out-of-bounds access or an unbounded fit. Failed fits retain the detection.
+No separate PID-valid flag, failure-status member, or public refit method is
+stored. `Clear()` restores the same state as default construction.
+
+The existing production Physics-tree branches remain Emma and Tigress;
+the dictionary now enables a subsequent `std::vector<TipHit>` branch:
+
+```cpp
+std::vector<TipHit> tipHits;
+tree.Branch("Tip", &tipHits);
+tipHits.emplace_back(fragment);
+```
 
 ## Physics tree selection
 
