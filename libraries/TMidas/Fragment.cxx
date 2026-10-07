@@ -12,14 +12,20 @@ Fragment::Fragment() { }
 Fragment::~Fragment() { } 
 
 
-//int Fragment::Unpack(char *data) {
-//unpacks assuming grf4 data format
+// ============== Unpack ==============
+// Purpose: Decode GRF4 fields and save waveform samples for TIP addresses.
+// Inputs: Raw fragment words and fragment length.
+// Outputs: Decoded fields; false if timestamp words are invalid.
 bool Fragment::Unpack(uint32_t *data,int &nwords) {
 
   int cword =0; // points to header;
   uint32_t datum = *(data+cword);
   SetAddress((datum&0x000ffff0) >> 4);
   SetDetType((datum&0x0000000f) >> 0);
+
+  fWaveform.clear();
+  const bool isTip =
+    (fAddress & 0xf000) == 0x4000 || (fAddress & 0xf000) == 0x5000;
 
   //network packet
   cword+=1; // points to network packet? 
@@ -61,7 +67,19 @@ bool Fragment::Unpack(uint32_t *data,int &nwords) {
   // --- Read Chunk VIII (Charge/Waveform Check) ---
   datum = *(data+cword);
   while ((datum & 0xf0000000) == 0xc0000000) {
-    // (Waveform data processing would go here)
+    if (isTip) {
+      // Each word contains two signed 14-bit samples.
+      int sample0 = datum & 0x3fff;
+      int sample1 = (datum >> 14) & 0x3fff;
+      if (sample0 & 0x2000) {
+        sample0 -= 0x4000;
+      }
+      if (sample1 & 0x2000) {
+        sample1 -= 0x4000;
+      }
+      fWaveform.push_back(static_cast<Short_t>(sample0));
+      fWaveform.push_back(static_cast<Short_t>(sample1));
+    }
     cword+=1;
     datum = *(data+cword);
   }

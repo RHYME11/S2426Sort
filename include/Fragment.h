@@ -24,7 +24,6 @@ class Fragment {
     void SetDetType(int detType)      { fDetType = detType; }
     void SetTimestamp(long timestamp) { fTimestamp = timestamp; }
     void SetHasWave()                 { fHasWave = !fHasWave; }
-    void SetWaveSamples(int samples)  { fWaveSamples = samples; }
     void SetCfd(int cfd)              { fCfd = cfd; }
     void SetFilterPattern(int fp)     { fFilterPattern = fp; }    
     void SetPileup(int pileup)        { fPileup = pileup; }  
@@ -42,6 +41,12 @@ class Fragment {
     int  Cfd()       const { return fCfd;       }
     int  Filter()    const { return fFilterPattern; }
     int  Pileup()    const { return fPileup;        }
+
+    // ============== Waveform ==============
+    // Purpose: Read saved TIP waveform samples.
+    // Inputs: None.
+    // Outputs: Sample vector by const reference.
+    const std::vector<Short_t>& Waveform() const { return fWaveform; }
 
     float Charge()   const; // { return float(fCharge.at(0))/float(fInt.at(0)); }
     float Energy()   const; // { return float(fCharge.at(0))/float(fInt.at(0)); }
@@ -66,7 +71,7 @@ class Fragment {
     int fPileup{-1};
 
     bool fHasWave{false};
-    int  fWaveSamples{-1};
+    std::vector<Short_t> fWaveform;
 
     std::vector<int> fInt;
     std::vector<float> fCharge;
@@ -85,7 +90,7 @@ class Fragment {
       return;
     }
 
-  ClassDef(Fragment,1);
+  ClassDef(Fragment,2);
 };
 
 

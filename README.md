@@ -149,9 +149,22 @@ The banks are processed in this order:
 2. MADC through `MakeEmmaADC()`.
 3. EMMT through `MakeEmmaTDC()`.
 
+GRF4 decoding saves waveform samples only for TIP fragments with 16-bit
+addresses starting with `0x4` or `0x5`. This matches all 128 `TPC` channels in
+`cal/CalibrationFile_Oct0626_pol1.cal`; no other configured channels use these
+prefixes. Each waveform word contains two signed 14-bit samples, stored in
+order as `Short_t` values. Other fragments skip waveform words and keep an
+empty sample vector. Charge, integration, CFD, and event-building behavior
+remain unchanged.
+
+`Fragment::Waveform()` returns the saved samples by const reference; its size
+is the saved sample count. `HasWave()` still reports the raw waveform flag.
+The unused `SetWaveSamples()` and `fWaveSamples` count are removed. The ROOT
+`Fragment` class version is now 2, and waveform samples are saved with the
+existing FragmentTree and EventTree objects.
+
 `EventBuilder::pushBatch()` removes exact GRF4 duplicates within the current
-MIDAS batch and across adjacent batches. `Fragment` itself is not modified by
-the event and physics data-model changes.
+MIDAS batch and across adjacent batches.
 
 EMMT decoding retains leading measurements and discards trailing measurements.
 Same-address EMMT cleanup is not performed during decoding, in EventBuilder,
