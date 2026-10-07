@@ -134,11 +134,23 @@ void Fragment::Print(Option_t *opt) const {
 }
 
 
-float Fragment::Charge()   const { // { return float(fCharge.at(0))/float(fInt.at(0)); }
-  if(!fCharge.empty() && !fInt.empty())
-    return float(fCharge.at(0))/(float(fInt.at(0)/5.)); 
-  return -1;
+// ============== Charge ==============
+// Purpose: Normalize charge according to detector type.
+// Inputs: Stored charge, integration value, and address.
+// Outputs: TIP Q/K; other detectors Q/(K/5); -1 if fields are empty.
+float Fragment::Charge() const {
+  if (!fCharge.empty() && !fInt.empty()) {
+    const bool isTip =
+      (fAddress & 0xf000) == 0x4000 ||
+      (fAddress & 0xf000) == 0x5000;
 
+    if (isTip) {
+      return fCharge.at(0) / static_cast<float>(fInt.at(0));
+    }
+
+    return float(fCharge.at(0)) / float(fInt.at(0) / 5.);
+  }
+  return -1;
 }
 
 float Fragment::Energy() const {

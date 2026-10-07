@@ -154,8 +154,16 @@ addresses starting with `0x4` or `0x5`. This matches all 128 `TPC` channels in
 `cal/CalibrationFile_Oct0626_pol1.cal`; no other configured channels use these
 prefixes. Each waveform word contains two signed 14-bit samples, stored in
 order as `Short_t` values. Other fragments skip waveform words and keep an
-empty sample vector. For accepted fragments, charge, integration, CFD, and
-event-building behavior remain unchanged.
+empty sample vector. Raw charge, integration, CFD, and event-building behavior
+are unchanged by waveform decoding.
+
+`Fragment::Charge()` returns `Q/K` for the same TIP address prefixes; other
+detectors retain `Q/(K/5)`. Stored charge and integration fields are unchanged,
+including the existing random fraction added to Q. `AddCharge()` uses this
+getter for energy calibration, so newly decoded TIP fragments are calibrated
+using `Q/K`. TIP calibration coefficients must match this scale. Reading an
+existing ROOT file uses the new charge normalization but does not recalculate
+its stored energy.
 
 After skipping waveform words, `Fragment::Unpack()` requires two charge/CFD
 data words before the trailer, both with bit 31 clear. It returns `false`
