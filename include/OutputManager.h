@@ -3,11 +3,13 @@
 
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include <DetectorEvent.h>
 #include <Emma.h>
 #include <Fragment.h>
 #include <Tigress.h>
+#include <TipHit.h>
 
 class TFile;
 class TTree;
@@ -34,10 +36,11 @@ class OutputManager {
     void FillEvent(const DetectorEvent& event);
 
     // ============== FillPhysics ==============
-    // Purpose: Fill one Emma/Tigress pair into exactly one Physics tree.
-    // Inputs: Built Emma and Tigress objects.
+    // Purpose: Fill Emma, Tigress, and TIP hits into exactly one Physics tree.
+    // Inputs: Built Emma, Tigress, and possibly empty TIP hit collection.
     // Outputs: None.
-    void FillPhysics(const Emma& emma, const Tigress& tigress);
+    void FillPhysics(const Emma& emma, const Tigress& tigress,
+                     const std::vector<TipHit>& tip);
 
     // ============== FillFragment ==============
     // Purpose: Fill one time-ordered fragment before it leaves EventBuilder.
@@ -70,6 +73,7 @@ class OutputManager {
     DetectorEvent fEvent;
     Emma fEmma;
     Tigress fTigress;
+    std::vector<TipHit> fTip;
 
     Fragment *fFragmentBranch{&fFragment};
     DetectorEvent *fEventBranch{&fEvent};

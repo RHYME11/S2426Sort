@@ -109,14 +109,17 @@ void OutputManager::Open(int run, int subrun, bool fragmentOnly) {
     fBgTree = new TTree("BgTree", "Background events");
     fBgTree->Branch("Emma", "Emma", &fEmmaBranch, 32000, 0);
     fBgTree->Branch("Tigress", "Tigress", &fTigressBranch, 32000, 0);
+    fBgTree->Branch("Tip", &fTip, 32000, 0);
 
     fPromptGoodTree = new TTree("PromptGoodTree", "Prompt events with valid PGAC X");
     fPromptGoodTree->Branch("Emma", "Emma", &fEmmaBranch, 32000, 0);
     fPromptGoodTree->Branch("Tigress", "Tigress", &fTigressBranch, 32000, 0);
+    fPromptGoodTree->Branch("Tip", &fTip, 32000, 0);
 
     fPromptBadTree = new TTree("PromptBadTree", "Prompt events without valid PGAC X");
     fPromptBadTree->Branch("Emma", "Emma", &fEmmaBranch, 32000, 0);
     fPromptBadTree->Branch("Tigress", "Tigress", &fTigressBranch, 32000, 0);
+    fPromptBadTree->Branch("Tip", &fTip, 32000, 0);
   }
 }
 
@@ -133,15 +136,17 @@ void OutputManager::FillEvent(const DetectorEvent& event) {
 }
 
 // ============== FillPhysics ==============
-// Purpose: Fill one Emma/Tigress pair into exactly one Physics tree.
-// Inputs: Built Emma and Tigress objects.
+// Purpose: Fill Emma, Tigress, and TIP hits into exactly one Physics tree.
+// Inputs: Built Emma, Tigress, and possibly empty TIP hit collection.
 // Outputs: None.
-void OutputManager::FillPhysics(const Emma& emma, const Tigress& tigress) {
+void OutputManager::FillPhysics(const Emma& emma, const Tigress& tigress,
+                               const std::vector<TipHit>& tip) {
   std::lock_guard<std::mutex> lock(fMutex);
   if(!fPhysicsFile) return;
 
   fEmma = emma;
   fTigress = tigress;
+  fTip = tip;
 
   if(emma.Anode().empty()) {
     if(fBgTree) fBgTree->Fill();

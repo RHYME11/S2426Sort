@@ -4,8 +4,10 @@
 #include <Histogramer.h>
 #include <OutputManager.h>
 #include <Tigress.h>
+#include <TipHit.h>
 
 #include <cmath>
+#include <vector>
 
 DetectorProcess *DetectorProcess::fDetectorProcess = 0;
 
@@ -50,6 +52,14 @@ void DetectorProcess::loop() {
     emma.BuildHits(event);
     tigress.UpdateBGOFire(Tigress::SUPPRESSION_WINDOW_NS);
 
+    std::vector<TipHit> tip;
+    for(const auto& frag : event.Fragments()) {
+      const int prefix = frag.Address() & 0xf000;
+      if(prefix == 0x4000 || prefix == 0x5000) {
+        tip.emplace_back(frag);
+      }
+    }
+
     for(const auto& current : tigress.Hits()) {
       Histogramer::Fill("summary",70,0,70,current.ArrayNumber(),
                         8000,0,4000,current.Energy());
@@ -86,7 +96,7 @@ void DetectorProcess::loop() {
     Histogramer::Fill("EventProcessing",std::string(eventType) + ": pgac_r.size",100,0,100,emma.Right().size());
     Histogramer::Fill("EventProcessing",std::string(eventType) + ": anode.size",100,0,100,emma.Anode().size());
 
-    OutputManager::Get()->FillPhysics(emma, tigress);
+    OutputManager::Get()->FillPhysics(emma, tigress, tip);
     fPushed++;
   }
 }

@@ -1,6 +1,6 @@
 # S2426Sort
 
-S2426Sort is a ROOT/C++ sorter for MIDAS data containing TIGRESS and EMMA
+S2426Sort is a ROOT/C++ sorter for MIDAS data containing TIGRESS, EMMA, and TIP
 detector banks. It decodes raw banks into `Fragment` objects, removes repeated
 GRF4 data, time-orders fragments, builds `DetectorEvent` objects, constructs
 detector-level physics objects, fills histograms, and writes ROOT trees.
@@ -94,13 +94,16 @@ event<run>_<subrun>.root
 physics<run>_<subrun>.root
 ├── BgTree
 │   ├── Emma           (Emma)
-│   └── Tigress        (Tigress)
+│   ├── Tigress        (Tigress)
+│   └── Tip            (std::vector<TipHit>)
 ├── PromptGoodTree
 │   ├── Emma           (Emma)
-│   └── Tigress        (Tigress)
+│   ├── Tigress        (Tigress)
+│   └── Tip            (std::vector<TipHit>)
 └── PromptBadTree
     ├── Emma           (Emma)
-    └── Tigress        (Tigress)
+    ├── Tigress        (Tigress)
+    └── Tip            (std::vector<TipHit>)
 ```
 
 ## Processing pipeline
@@ -115,7 +118,7 @@ flowchart LR
   F --> G["EventProcess builds DetectorEvent"]
   G --> H["Fill EventTree"]
   G --> I["DetectorProcess queue"]
-  I --> J["Build Tigress and Emma"]
+  I --> J["Build Tigress, Emma, and TIP hits"]
   J --> K["Fill histograms"]
   J --> L["Fill one Physics tree"]
 ```
@@ -126,7 +129,7 @@ The selected two-stage event design is:
 |---|---|
 | Main | Read MIDAS data and decode detector banks |
 | EventProcess | Pop built fragment groups, create `DetectorEvent`, and fill EventTree |
-| DetectorProcess | Build `Tigress` and `Emma`, fill histograms, and fill Physics trees |
+| DetectorProcess | Build `Tigress`, `Emma`, and TIP hits, fill histograms, and fill Physics trees |
 
 In fragment-only mode, the main thread drains the timestamp-ordered
 EventBuilder queue directly into FragmentTree. EventProcess and DetectorProcess
@@ -486,19 +489,25 @@ out-of-bounds access or an unbounded fit. Failed fits retain the detection.
 No separate PID-valid flag, failure-status member, or public refit method is
 stored. `Clear()` restores the same state as default construction.
 
-The existing production Physics-tree branches remain Emma and Tigress;
-the dictionary now enables a subsequent `std::vector<TipHit>` branch:
+All three production Physics trees store Emma, Tigress, and a `Tip` branch of
+type `std::vector<TipHit>`. DetectorProcess constructs one hit for every event
+fragment with address prefix `0x4` or `0x5`, matching the waveform decoder and
+all 128 CsI channels in the selected calibration. Construction retains hits
+with missing waveforms or failed fits.
 
 ```cpp
-std::vector<TipHit> tipHits;
-tree.Branch("Tip", &tipHits);
-tipHits.emplace_back(fragment);
+std::vector<TipHit> fTip;
+tree.Branch("Tip", &fTip, 32000, 0);
 ```
+
+OutputManager assigns `fTip = tip` before every Physics-tree fill. The vector
+may be empty in any of the three trees; an empty current event also clears the
+previous event's hits. TIP multiplicity and PID do not select the output tree.
 
 ## Physics tree selection
 
-Every DetectorEvent is converted into one Emma/Tigress pair and sent to
-exactly one Physics tree:
+Every DetectorEvent is converted into Emma, Tigress, and a possibly empty TIP
+hit collection, then sent together to exactly one Physics tree:
 
 ```cpp
 if(emma.Anode().empty()) {
