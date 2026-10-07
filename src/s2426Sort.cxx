@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
   printf(" \tsubrun: %i\n",subrun);
   printf(" \tmode:   %s\n",fragmentOnly ? "fragment-only" : "full");
 
-  Channel::Read("cal/CalibrationFile_May1526_pol1.cal");
+  Channel::Read("cal/CalibrationFile_Oct0626_pol1.cal");
   //start event builder;
   EventBuilder::Get();
   if(!fragmentOnly) {
