@@ -1,4 +1,4 @@
-// c++ $(root-config --cflags) -Iinclude macros/cxx/physicstree_promptgood2.cxx -Lbuild/lib -Wl,-rpath,$PWD/build/lib -lHISTOGRAMER -lS2426PHYSICS -lTMIDAS -lCHANNEL $(root-config --libs) -o macros/cxx/bin/physicstree_promptgood2
+// c++ $(root-config --cflags) -Iinclude macros/cxx/physicstree_promptgood3.cxx -Lbuild/lib -Wl,-rpath,$PWD/build/lib -lHISTOGRAMER -lS2426PHYSICS -lTMIDAS -lCHANNEL $(root-config --libs) -o macros/cxx/bin/physicstree_promptgood3
 
 #include <cstdio>
 #include <filesystem>
@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
   tree->SetBranchAddress("Emma", &emma);
 
   const std::string outputPath =
-    "histOutput/physicstree_promptgood2/hist_" + inputName;
+    "histOutput/physicstree_promptgood3/hist_" + inputName;
   Histogramer::Get()->SetOutputPath(outputPath);
 
   // ======== TCutG Load ======== //
@@ -65,26 +65,23 @@ int main(int argc, char** argv) {
   }
   // ======== Par Setup ========= //
   double beta = 0.056;
-  double pgacxg[3][2] = {{-18,-13},
-                         {-10,-5},
-                         {3,8}}; 
 
   long nentries = tree->GetEntries();
   long xentry = 0;
   for(xentry = 0; xentry < nentries; xentry++) {
     tree->GetEntry(xentry);
     if(emma->Left().size() == 0 || emma->Right().size() == 0) {
-      for(int i=0;i<tig->Hits().size();i++){          
-        TigressHit tighit = tig->Hits()[i];           
-        double e1 = tighit.Doppler(beta);             
-        long t1   = tighit.TimestampNs();             
-        int arry1 = tighit.ArrayNumber();             
-        if(e1<15) continue;      
-        if(tighit.KValue()!=379) continue;            
-        if(tighit.BGOFire()) continue;                
-        Histogramer::Fill("PromptGood_singleAnode", " Energy vs ArrayNumber",                  64,0,64,arry1,8e3,0,8e3,tighit.Energy());
-        Histogramer::Fill("PromptGood_singleAnode", Form(" Doppler(%.3f) vs ArrayNumber",beta),64,0,64,arry1,8e3,0,8e3,e1);
-      }
+      //for(int i=0;i<tig->Hits().size();i++){          
+      //  TigressHit tighit = tig->Hits()[i];           
+      //  double e1 = tighit.Doppler(beta);             
+      //  long t1   = tighit.TimestampNs();             
+      //  int arry1 = tighit.ArrayNumber();             
+      //  if(e1<15) continue;      
+      //  if(tighit.KValue()!=379) continue;            
+      //  if(tighit.BGOFire()) continue;                
+      //  Histogramer::Fill("PromptGood_singleAnode", " Energy vs ArrayNumber",                  64,0,64,arry1,8e3,0,8e3,tighit.Energy());
+      //  Histogramer::Fill("PromptGood_singleAnode", Form(" Doppler(%.3f) vs ArrayNumber",beta),64,0,64,arry1,8e3,0,8e3,e1);
+      //}
       continue;
     }
     double pgacx = emma->PGACX();
@@ -97,34 +94,34 @@ int main(int argc, char** argv) {
     if(!emma->Si().empty()  && emma->Si()[0].Charge()<3500)  {ics[4] = emma->Si()[0].Charge();  lastIC = {4,emma->Si()[0].Charge()};}
   
 // ========== check abnormal =============== //
-    bool hit[5] = { !emma->IC0().empty() && emma->IC0()[0].Charge()<3500,
-                    !emma->IC1().empty() && emma->IC1()[0].Charge()<3500,
-                    !emma->IC2().empty() && emma->IC2()[0].Charge()<3500,
-                    !emma->IC3().empty() && emma->IC3()[0].Charge()<3500,
-                    !emma->Si().empty()  && emma->Si()[0].Charge()<3500};
-    int missing = -1;
-    for(int i=0;i<5;i++){
-      if(!hit[i]) missing = i;
-      if(missing>=0 && hit[i]) {
-        Histogramer::Fill("PID","Abnomal ions in EMMA", 10,0,10, missing);
-        break;
-      }
-    } 
+   // bool hit[5] = { !emma->IC0().empty() && emma->IC0()[0].Charge()<3500,
+   //                 !emma->IC1().empty() && emma->IC1()[0].Charge()<3500,
+   //                 !emma->IC2().empty() && emma->IC2()[0].Charge()<3500,
+   //                 !emma->IC3().empty() && emma->IC3()[0].Charge()<3500,
+   //                 !emma->Si().empty()  && emma->Si()[0].Charge()<3500};
+   // int missing = -1;
+   // for(int i=0;i<5;i++){
+   //   if(!hit[i]) missing = i;
+   //   if(missing>=0 && hit[i]) {
+   //     Histogramer::Fill("PID","Abnomal ions in EMMA", 10,0,10, missing);
+   //     break;
+   //   }
+   // } 
 // ========== check abnormal (over)=============== //
     double sum = std::accumulate(ics, ics+5, 0.0);
-    if(lastIC.first>0) Histogramer::Fill("PID/SUM",Form("IC%i vs Sum", lastIC.first),2.5e3,0,10e3,sum, 1e3,0,4e3,lastIC.second);
-    if(!emma->Si().empty() && !emma->IC0().empty()){ 
-      Histogramer::Fill("PID/ICs","IC0 vs Si", 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[0]);
-    }
-    if(!emma->Si().empty() && !emma->IC1().empty()) {
-      Histogramer::Fill("PID/ICs","IC1 vs Si", 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[1]);
-    }
-    if(!emma->Si().empty() && !emma->IC2().empty()) {
-      Histogramer::Fill("PID/ICs","IC2 vs Si", 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[2]);
-    }
-    if(!emma->Si().empty() && !emma->IC3().empty()){ 
-      Histogramer::Fill("PID/ICs","IC3 vs Si", 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[3]);
-    }
+    //if(lastIC.first>0) Histogramer::Fill("PID/SUM",Form("IC%i vs Sum", lastIC.first),2.5e3,0,10e3,sum, 1e3,0,4e3,lastIC.second);
+    //if(!emma->Si().empty() && !emma->IC0().empty()){ 
+    //  Histogramer::Fill("PID/ICs","IC0 vs Si", 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[0]);
+    //}
+    //if(!emma->Si().empty() && !emma->IC1().empty()) {
+    //  Histogramer::Fill("PID/ICs","IC1 vs Si", 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[1]);
+    //}
+    //if(!emma->Si().empty() && !emma->IC2().empty()) {
+    //  Histogramer::Fill("PID/ICs","IC2 vs Si", 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[2]);
+    //}
+    //if(!emma->Si().empty() && !emma->IC3().empty()){ 
+    //  Histogramer::Fill("PID/ICs","IC3 vs Si", 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[3]);
+    //}
     if(!emma->IC3().empty() && !emma->IC0().empty()){ 
       Histogramer::Fill("PID/ICs","IC0 vs IC3", 1e3,0,4e3,ics[3], 1e3,0,4e3,ics[0]);
     }
@@ -134,19 +131,19 @@ int main(int argc, char** argv) {
     // ==== pgacx gated PID ==== //
     if(pgacx>-20 && pgacx<10){
       int pgacx_int = (int)pgacx;    
-      if(lastIC.first>0) Histogramer::Fill(Form("PID/PGACXGate/%i/SUM",pgacx_int),Form("IC%i vs Sum gated pgacx=[%i,%i)",lastIC.first,pgacx_int, pgacx_int+1),2.5e3,0,10e3,sum, 1e3,0,4e3,lastIC.second); 
-      if(!emma->Si().empty() && !emma->IC0().empty()){ 
-        Histogramer::Fill(Form("PID/PGACXGate/%i/ICs",pgacx_int),Form("IC0 vs Si gated pgacx=[%i,%i)",pgacx_int, pgacx_int+1), 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[0]); 
-      }
-      if(!emma->Si().empty() && !emma->IC1().empty()) {
-        Histogramer::Fill(Form("PID/PGACXGate/%i/ICs",pgacx_int),Form("IC1 vs Si gated pgacx=[%i,%i)",pgacx_int, pgacx_int+1), 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[1]); 
-      }
-      if(!emma->Si().empty() && !emma->IC2().empty()) {
-        Histogramer::Fill(Form("PID/PGACXGate/%i/ICs",pgacx_int),Form("IC2 vs Si gated pgacx=[%i,%i)",pgacx_int, pgacx_int+1), 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[2]); 
-      }
-      if(!emma->Si().empty() && !emma->IC3().empty()){ 
-        Histogramer::Fill(Form("PID/PGACXGate/%i/ICs",pgacx_int),Form("IC3 vs Si gated pgacx=[%i,%i)",pgacx_int, pgacx_int+1), 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[3]); 
-      }
+      //if(lastIC.first>0) Histogramer::Fill(Form("PID/PGACXGate/%i/SUM",pgacx_int),Form("IC%i vs Sum gated pgacx=[%i,%i)",lastIC.first,pgacx_int, pgacx_int+1),2.5e3,0,10e3,sum, 1e3,0,4e3,lastIC.second); 
+      //if(!emma->Si().empty() && !emma->IC0().empty()){ 
+      //  Histogramer::Fill(Form("PID/PGACXGate/%i/ICs",pgacx_int),Form("IC0 vs Si gated pgacx=[%i,%i)",pgacx_int, pgacx_int+1), 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[0]); 
+      //}
+      //if(!emma->Si().empty() && !emma->IC1().empty()) {
+      //  Histogramer::Fill(Form("PID/PGACXGate/%i/ICs",pgacx_int),Form("IC1 vs Si gated pgacx=[%i,%i)",pgacx_int, pgacx_int+1), 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[1]); 
+      //}
+      //if(!emma->Si().empty() && !emma->IC2().empty()) {
+      //  Histogramer::Fill(Form("PID/PGACXGate/%i/ICs",pgacx_int),Form("IC2 vs Si gated pgacx=[%i,%i)",pgacx_int, pgacx_int+1), 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[2]); 
+      //}
+      //if(!emma->Si().empty() && !emma->IC3().empty()){ 
+      //  Histogramer::Fill(Form("PID/PGACXGate/%i/ICs",pgacx_int),Form("IC3 vs Si gated pgacx=[%i,%i)",pgacx_int, pgacx_int+1), 1e3,0,4e3,ics[4], 1e3,0,4e3,ics[3]); 
+      //}
       if(!emma->IC3().empty() && !emma->IC0().empty()){ 
         Histogramer::Fill(Form("PID/PGACXGate/%i/ICs",pgacx_int),Form("IC0 vs IC3 gated pgacx=[%i,%i)",pgacx_int, pgacx_int+1), 1e3,0,4e3,ics[3], 1e3,0,4e3,ics[0]); 
       }
@@ -166,22 +163,13 @@ int main(int argc, char** argv) {
       Histogramer::Fill("PromptGoodTree", " Energy vs ArrayNumber",                  64,0,64,arry1,8e3,0,8e3,tighit.Energy());
       Histogramer::Fill("PromptGoodTree", Form(" Doppler(%.3f) vs ArrayNumber",beta),64,0,64,arry1,8e3,0,8e3,e1);
       if(arry1<48) Histogramer::Fill("TIG", Form("PGACX vs Doppler(%.3f) mid ring",beta),60,-30,30,pgacx,4e3,0,4e3,e1); 
-      // ====== ics vs si gate starts ===== //
-      if(ics[4]){
-        for(int m=0;m<4;m++){ // loop 4 ic
-          if(!ics[m]) continue;
-          for(int n=0;n<=20;n++){ // loop 21 tcutg
-            if(siic_cut[n]->IsInside(ics[4],ics[m])){
-              if(arry1<48){
-                if(ics[4]<150) Histogramer::Fill(Form("TIG/ICs_Si_Gate/IC%i/Left",m), Form("PGACX vs Doppler(%.3f) gated ic%i vs si %s mid ring",beta,m,siic_cut[n]->GetName()),60,-30,30,pgacx,4e3,0,4e3,e1);
-                else           Histogramer::Fill(Form("TIG/ICs_Si_Gate/IC%i/Right",m),Form("PGACX vs Doppler(%.3f) gated ic%i vs si %s mid ring",beta,m,siic_cut[n]->GetName()),60,-30,30,pgacx,4e3,0,4e3,e1);
-              }
-              if(ics[4]<150) Histogramer::Fill(Form("TIG/ICs_Si_Gate/IC%i/Left",m),  Form("summary Doppler(%.3f) gated ic%i vs si %s",beta,m,siic_cut[n]->GetName()),64,0,64,arry1  ,4e3,0,4e3,e1);
-              else           Histogramer::Fill(Form("TIG/ICs_Si_Gate/IC%i/Right",m), Form("summary Doppler(%.3f) gated ic%i vs si %s",beta,m,siic_cut[n]->GetName()),64,0,64,arry1  ,4e3,0,4e3,e1);
-            }        
-          }// 21 tcutg loop over
-        }// 4 ic loop over
-      }// if si no empty over
+      if(ics[0] && ics[3]){ // if IC0 and IC3 not empty
+        for(int m=0;m<12;m++){ // ic0 vs ic3 cut loop
+          if(ic3ic0_cut[m]->IsInside(ics[3],ics[0])){
+            if(arry1<48) Histogramer::Fill("TIG/IC3_IC0_Gate", Form("PGACX vs Doppler(%.3f) gated ic3 vs ic0 %s mid ring",beta,ic3ic0_cut[m]->GetName()),60,-30,30,pgacx,4e3,0,4e3,e1);
+          }
+        }// ic0 vs ic3 cut over
+      }// if IC0 and IC3 no empty over
 
 
 
@@ -206,35 +194,19 @@ int main(int argc, char** argv) {
         }
         Histogramer::Fill("TIG/Coinc",Form("dt(TimestampNs) vs Higher Dopper(b=%.3f)",beta),6e2,-3e3,3e3, dtns, 4000,0,4000,e);
         if(dtns>=-50 && dtns<=150){ 
-          Histogramer::Fill("TIG/Coinc/mid ring",Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns mid ring",beta), 1000,0,4000,e1,1000,0,4000,e2,30,-20,10,pgacx);
-          Histogramer::Fill("TIG/Coinc/mid ring",Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns mid ring",beta), 1000,0,4000,e2,1000,0,4000,e1,30,-20,10,pgacx);
-          // ====== ics vs si gate starts ===== //
-          if(ics[4]){
-            for(int m=0;m<4;m++){ // loop 4 ic
-              if(!ics[m]) continue;
-              for(int n=0;n<=20;n++){ // loop 21 tcutg
-                if(siic_cut[n]->IsInside(ics[4],ics[m])){
-                  if(arry1<48 && arry2<48){
-                    if(ics[4]<150){
-                      Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Left/mid ring",m),
-                                        Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",beta,m,siic_cut[n]->GetName()),
-                                        1000,0,4000,e1,1000,0,4000,e2,30,-20,10,pgacx);
-                      Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Left/mid ring",m),
-                                        Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",beta,m,siic_cut[n]->GetName()),
-                                        1000,0,4000,e2,1000,0,4000,e1,30,-20,10,pgacx);
-                    }else{
-                      Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Right/mid ring",m),
-                                        Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",beta,m,siic_cut[n]->GetName()),
-                                        1000,0,4000,e1,1000,0,4000,e2,30,-20,10,pgacx);
-                      Histogramer::Fill(Form("TIG/Coinc/ICs_Si_Gate/IC%i/Right/mid ring",m),
-                                        Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns gated ic%i vs si %s mid ring",beta,m,siic_cut[n]->GetName()),
-                                        1000,0,4000,e2,1000,0,4000,e1,30,-20,10,pgacx);
-                    }
-                  }
-                } // if tcug over
-              } // 21 tcutg loop over
-            } // 4 ic loop over
-          } // if si no empty over
+          Histogramer::Fill("TIG/Coinc/mid ring",Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns mid ring",beta), 2000,0,4000,e1,2000,0,4000,e2,30,-20,10,pgacx);
+          Histogramer::Fill("TIG/Coinc/mid ring",Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns mid ring",beta), 2000,0,4000,e2,2000,0,4000,e1,30,-20,10,pgacx);
+          // ====== ic3 vs ic0 gates starts ===== //
+          for(int m=0;m<12;m++){
+            if(ic3ic0_cut[m]->IsInside(ics[3],ics[0])){
+              if(arry1<48 && arry2<48){
+                Histogramer::Fill("TIG/Coinc/IC3_IC0_Gate/mid ring", Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns gated %s mid ring",beta,ic3ic0_cut[m]->GetName()),
+                                  2000,0,4000,e1,2000,0,4000,e2,30,-20,10,pgacx);
+                Histogramer::Fill("TIG/Coinc/IC3_IC0_Gate/mid ring", Form("gg matrix vs pgacx: Doppler(%.3f) within dtns=[-50,150]ns gated %s mid ring",beta,ic3ic0_cut[m]->GetName()),
+                                  2000,0,4000,e2,2000,0,4000,e1,30,-20,10,pgacx);
+              }
+            } // if inside cut over
+          } // loop 12 ic3_ic0 cut over
         }// if dtns over
       }// loop j over
     }// loop i over
@@ -248,7 +220,7 @@ int main(int argc, char** argv) {
 
   printf("on entry = %lu / %lu \n", xentry, nentries);
 
-// ============== Sort PromptBadTree =========== //
+/*// ============== Sort PromptBadTree =========== //
   TTree* tree2 = (TTree*)infile->Get("PromptBadTree");
   if(!tree2) {
     std::printf("PromptBadTree not found\n");
@@ -318,7 +290,7 @@ int main(int argc, char** argv) {
   }
   printf("on entry = %lu / %lu \n", xentry2, nentries2);
 // ============================================= //
-
+*/
   Histogramer::Close();
   infile->Close();
   delete infile;

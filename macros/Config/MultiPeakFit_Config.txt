@@ -61,7 +61,7 @@ rootFitOption = RQSN
 # range = 185,205
 
 relativePosition = false
-relativeFwhm = true
+relativeFwhm = false
 
 #####################################################################################
 # Initial values
