@@ -63,7 +63,7 @@ void EventBuilder::pushBatch(std::vector<std::unique_ptr<Fragment>> fragments) {
     }
 
     const int number = frag->Number();
-    if(number < 720) {
+    if(number < 848) {
       const std::pair<int, long> key = std::make_pair(frag->Address(), ts);
       const bool firstInCurrentBatch = currentBatchKeys.emplace(key).second;
       if(!firstInCurrentBatch) {
